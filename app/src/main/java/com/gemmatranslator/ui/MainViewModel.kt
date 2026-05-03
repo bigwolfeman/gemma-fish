@@ -187,6 +187,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val activePipeline = pipeline ?: AudioPipeline(
             context       = getApplication(),
             translationFn = ::translationCallback,
+            onPartialText = { partial ->
+                _uiState.update { it.copy(pendingRecognizedText = partial) }
+            },
         ).also { pipeline = it }
 
         activePipeline.setMode(state.mode)
@@ -231,35 +234,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun translationCallback(text: String): TranslationResult {
         val state = _uiState.value
 
-        // Show the recognised text immediately while translation is in flight
         _uiState.update { it.copy(pendingRecognizedText = text) }
 
-        // ── Language detection ──────────────────────────────────────────────
-        val detectedBcp47: String = try {
-            engine.detectLanguage(text)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            _uiState.update { it.copy(pendingRecognizedText = null) }
-            return emptyResult()
-        }
-
-        val detectedLang = Language.fromBcp47(detectedBcp47)
-
-        // ── Channel routing ─────────────────────────────────────────────────
-        val (sourceLang, targetLang, outputChannel) = when (detectedLang) {
-            state.leftLanguage  -> Triple(state.leftLanguage,  state.rightLanguage, AudioChannel.RIGHT)
-            state.rightLanguage -> Triple(state.rightLanguage, state.leftLanguage,  AudioChannel.LEFT)
-            else -> {
-                // Unrecognised language — silently discard, no TTS
-                _uiState.update { it.copy(pendingRecognizedText = null) }
-                return TranslationResult(
-                    translatedText           = "",
-                    detectedSourceLanguage   = detectedBcp47,
-                    targetChannel            = AudioChannel.BOTH,
-                )
-            }
-        }
+        // Fast language detection: check if text matches right language using
+        // character/word heuristics. Falls back to assuming left language.
+        val isRightLang = detectLanguageFast(text, state.rightLanguage)
+        val sourceLang = if (isRightLang) state.rightLanguage else state.leftLanguage
+        val targetLang = if (isRightLang) state.leftLanguage else state.rightLanguage
+        val outputChannel = if (isRightLang) AudioChannel.LEFT else AudioChannel.RIGHT
 
         // ── Translation ─────────────────────────────────────────────────────
         val translated: String = try {
@@ -275,7 +257,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             return TranslationResult(
                 translatedText           = "",
-                detectedSourceLanguage   = detectedBcp47,
+                detectedSourceLanguage   = sourceLang.bcp47,
                 targetChannel            = outputChannel,
             )
         }
@@ -306,12 +288,79 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         return TranslationResult(
             translatedText           = translated,
-            detectedSourceLanguage   = detectedBcp47,
+            detectedSourceLanguage   = sourceLang.bcp47,
             targetChannel            = outputChannel,
         )
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private fun detectLanguageFast(text: String, candidateLang: Language): Boolean {
+        val lower = text.lowercase()
+        val words = lower.split("\\s+".toRegex())
+        return when (candidateLang.bcp47.substringBefore('-')) {
+            "es" -> {
+                val markers = setOf("el", "la", "los", "las", "de", "en", "que", "es", "un", "una",
+                    "por", "con", "para", "como", "pero", "más", "muy", "está", "son", "tiene",
+                    "hola", "sí", "no", "yo", "tú", "esto", "eso", "bien", "bueno", "también",
+                    "cómo", "dónde", "qué", "cuándo", "hacer", "puede", "todo", "nada")
+                val hasAccents = lower.any { it in "áéíóúñ¿¡ü" }
+                val matchCount = words.count { it in markers }
+                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
+            }
+            "fr" -> {
+                val markers = setOf("le", "la", "les", "de", "des", "du", "un", "une", "est",
+                    "et", "en", "que", "qui", "dans", "pour", "avec", "sur", "pas", "nous",
+                    "vous", "je", "il", "elle", "ce", "cette", "sont", "ont", "mais", "ou",
+                    "très", "bien", "oui", "non", "merci", "bonjour")
+                val hasAccents = lower.any { it in "àâçéèêëïîôùûüÿœæ" }
+                val matchCount = words.count { it in markers }
+                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
+            }
+            "de" -> {
+                val markers = setOf("der", "die", "das", "ein", "eine", "ist", "und", "ich",
+                    "du", "er", "sie", "wir", "ihr", "nicht", "mit", "auf", "für", "von",
+                    "aber", "oder", "wenn", "auch", "nur", "noch", "schon", "sehr", "gut",
+                    "ja", "nein", "danke", "bitte", "haben", "sein", "werden")
+                val hasChars = lower.any { it in "äöüß" }
+                val matchCount = words.count { it in markers }
+                hasChars || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
+            }
+            "pt" -> {
+                val markers = setOf("o", "a", "os", "as", "de", "do", "da", "em", "no", "na",
+                    "um", "uma", "que", "não", "com", "para", "por", "mais", "mas", "muito",
+                    "bem", "sim", "está", "são", "tem", "você", "eu", "ele", "ela", "isso",
+                    "obrigado", "olá", "como", "onde", "quando")
+                val hasAccents = lower.any { it in "àáâãçéêíóôõú" }
+                val matchCount = words.count { it in markers }
+                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
+            }
+            "ja" -> lower.any { it.code in 0x3041..0x309F || it.code in 0x30A0..0x30FF || it.code in 0x4E00..0x9FFF }
+            "ko" -> lower.any { it.code in 0xAC00..0xD7AF }
+            "zh" -> lower.any { it.code in 0x4E00..0x9FFF }
+            "ar" -> lower.any { it.code in 0x0600..0x06FF }
+            "hi" -> lower.any { it.code in 0x0900..0x097F }
+            "ru" -> lower.any { it.code in 0x0400..0x04FF }
+            "it" -> {
+                val markers = setOf("il", "lo", "la", "le", "gli", "un", "una", "di", "del",
+                    "che", "è", "non", "per", "con", "sono", "come", "anche", "più", "ma",
+                    "io", "tu", "lui", "lei", "noi", "questo", "quello", "bene", "sì", "grazie")
+                val hasAccents = lower.any { it in "àèéìòù" }
+                val matchCount = words.count { it in markers }
+                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
+            }
+            "tr" -> {
+                val markers = setOf("bir", "ve", "bu", "için", "ile", "de", "da", "ben",
+                    "sen", "ne", "var", "yok", "çok", "iyi", "evet", "hayır", "nasıl")
+                val hasChars = lower.any { it in "çğıöşü" }
+                val matchCount = words.count { it in markers }
+                hasChars || matchCount >= 2
+            }
+            "vi" -> lower.any { it in "ăâđêôơư" || (it.code in 0x0300..0x036F) }
+            "th" -> lower.any { it.code in 0x0E00..0x0E7F }
+            else -> false
+        }
+    }
 
     private fun emptyResult() = TranslationResult(
         translatedText           = "",

@@ -30,9 +30,11 @@ class SpeechRecognitionManager(
     private val context: Context,
     private val locale: Locale = Locale.getDefault(),
 ) {
-    // Buffered so bursts during restart gap are not dropped
     private val resultChannel = Channel<String>(capacity = Channel.BUFFERED)
     val recognizedTextFlow: Flow<String> = resultChannel.receiveAsFlow()
+
+    private val partialChannel = Channel<String>(capacity = Channel.CONFLATED)
+    val partialTextFlow: Flow<String> = partialChannel.receiveAsFlow()
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
@@ -71,6 +73,7 @@ class SpeechRecognitionManager(
     fun release() {
         stop()
         resultChannel.close()
+        partialChannel.close()
     }
 
     // -------------------------------------------------------------------------
@@ -117,9 +120,9 @@ class SpeechRecognitionManager(
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, locale.toLanguageTag())
         putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-        // Keep listening even during silence; continuous feel
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L)
+        putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1000L)
         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
     }
 
@@ -133,15 +136,24 @@ class SpeechRecognitionManager(
                 ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 ?.firstOrNull()
                 ?.takeIf { it.isNotBlank() }
-                ?.let { resultChannel.trySend(it) }
+                ?.let { partialChannel.trySend(it) }
         }
 
         override fun onResults(results: Bundle?) {
-            results
-                ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                ?.firstOrNull()
-                ?.takeIf { it.isNotBlank() }
-                ?.let { resultChannel.trySend(it) }
+            val texts = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val scores = results?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
+            val text = texts?.firstOrNull()?.takeIf { it.isNotBlank() } ?: run {
+                if (!isStopped.get()) mainHandler.postDelayed({ restartRecognizer() }, 100L)
+                return
+            }
+            val confidence = scores?.firstOrNull() ?: 0f
+            Log.d(TAG, "Result: \"$text\" confidence=$confidence")
+            if (confidence > 0f && confidence < 0.4f) {
+                Log.d(TAG, "Dropping low-confidence result")
+                if (!isStopped.get()) mainHandler.postDelayed({ restartRecognizer() }, 100L)
+                return
+            }
+            resultChannel.trySend(text)
 
             // Android fires onResults then stops. Auto-restart for continuous listening.
             if (!isStopped.get()) {

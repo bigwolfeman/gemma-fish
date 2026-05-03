@@ -53,6 +53,7 @@ data class TranslationResult(
 class AudioPipeline(
     private val context: Context,
     private val translationFn: suspend (String) -> TranslationResult,
+    private val onPartialText: ((String) -> Unit)? = null,
 ) {
     // -------------------------------------------------------------------------
     // Sub-components
@@ -70,6 +71,7 @@ class AudioPipeline(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     @Volatile private var recognitionJob: Job? = null
+    @Volatile private var partialJob: Job? = null
     @Volatile private var ttsWorkerJob: Job? = null
     @Volatile private var isRunning = false
 
@@ -105,6 +107,7 @@ class AudioPipeline(
         isRunning = true
         launchTtsWorker()
         launchRecognitionCollector()
+        launchPartialForwarder()
         speechRecognizer.start()
 
         Log.i(TAG, "Pipeline started, mode=$mode left=$leftLanguage right=$rightLanguage")
@@ -121,6 +124,8 @@ class AudioPipeline(
         speechRecognizer.stop()
         recognitionJob?.cancel()
         recognitionJob = null
+        partialJob?.cancel()
+        partialJob = null
 
         tts.stopAll()
         ttsWorkerJob?.cancel()
@@ -177,31 +182,32 @@ class AudioPipeline(
     // Internal coroutines
     // -------------------------------------------------------------------------
 
-    /**
-     * Collect recognized text from the speech recognizer flow, run it through
-     * [translationFn] concurrently (to overlap translation with recognition),
-     * then post results to the TTS queue in arrival order.
-     *
-     * Note: we preserve order by launching each segment as a child of a sequencing
-     * structure. Since translation latency varies we use a per-segment launch but
-     * funnel results through the serial [ttsQueue].
-     */
+    private fun launchPartialForwarder() {
+        val callback = onPartialText ?: return
+        partialJob = scope.launch {
+            speechRecognizer.partialTextFlow.collect { partial ->
+                callback(partial)
+            }
+        }
+    }
+
     private fun launchRecognitionCollector() {
         recognitionJob = scope.launch {
             speechRecognizer.recognizedTextFlow.collect { segment ->
                 if (!isActive) return@collect
-                Log.d(TAG, "Recognized: \"$segment\"")
-                // Launch translation concurrently; results are queued — order may
-                // vary but TTS serialization ensures no overlapping audio.
-                launch {
-                    try {
-                        val result = withContext(Dispatchers.Default) {
-                            translationFn(segment)
-                        }
-                        ttsQueue.send(result)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Translation failed for segment: \"$segment\"", e)
+                val trimmed = segment.trim()
+                if (trimmed.length < 3 || trimmed.split("\\s+".toRegex()).size < 2) {
+                    Log.d(TAG, "Skipping short segment: \"$trimmed\"")
+                    return@collect
+                }
+                Log.d(TAG, "Final recognized: \"$trimmed\"")
+                try {
+                    val result = withContext(Dispatchers.Default) {
+                        translationFn(trimmed)
                     }
+                    ttsQueue.send(result)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Translation failed for segment: \"$trimmed\"", e)
                 }
             }
         }
@@ -219,12 +225,14 @@ class AudioPipeline(
                 if (!isActive) break
                 if (result.translatedText.isBlank()) continue
 
+                speechRecognizer.stop()
                 Log.d(TAG, "Speaking [${result.targetChannel}] \"${result.translatedText}\"")
                 tts.speak(
                     text = result.translatedText,
                     language = channelLanguage(result.targetChannel),
                     channel = result.targetChannel,
                 )
+                if (isRunning) speechRecognizer.start()
             }
         }
     }

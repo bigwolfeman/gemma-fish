@@ -41,6 +41,7 @@ class TranslationEngine(
 
     private val inferenceMutex = Mutex()
     @Volatile private var engine: Engine? = null
+    @Volatile private var conversation: com.google.ai.edge.litertlm.Conversation? = null
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val languageDetector = LanguageDetector { text ->
@@ -68,6 +69,7 @@ class TranslationEngine(
                 onProgress?.invoke(1f)
 
                 engine = e
+                conversation = e.createConversation()
                 _loadingState.value = LoadingState.Ready
                 Log.i(TAG, "Gemma E2B model loaded from $modelPath")
             } catch (e: Exception) {
@@ -78,6 +80,8 @@ class TranslationEngine(
     }
 
     override fun close() {
+        conversation?.close()
+        conversation = null
         engine?.close()
         engine = null
         _loadingState.value = LoadingState.Idle
@@ -116,11 +120,9 @@ class TranslationEngine(
     private suspend fun runInference(prompt: String): String =
         inferenceMutex.withLock {
             withContext(Dispatchers.Default) {
-                val e = engine ?: throw IllegalStateException("Engine not loaded")
-                e.createConversation().use { conversation ->
-                    val message = conversation.sendMessage(prompt)
-                    extractText(message)
-                }
+                val conv = conversation ?: throw IllegalStateException("Engine not loaded")
+                val message = conv.sendMessage(prompt)
+                extractText(message)
             }
         }
 
@@ -136,14 +138,12 @@ class TranslationEngine(
         onDone: (String) -> Unit,
     ) = inferenceMutex.withLock {
         withContext(Dispatchers.Default) {
-            val e = engine ?: throw IllegalStateException("Engine not loaded")
+            val conv = conversation ?: throw IllegalStateException("Engine not loaded")
             val fullBuilder = StringBuilder()
-            e.createConversation().use { conversation ->
-                conversation.sendMessageAsync(prompt).collect { message ->
-                    val chunk = extractText(message)
-                    fullBuilder.append(chunk)
-                    onPartial(chunk)
-                }
+            conv.sendMessageAsync(prompt).collect { message ->
+                val chunk = extractText(message)
+                fullBuilder.append(chunk)
+                onPartial(chunk)
             }
             onDone(fullBuilder.toString().trim())
         }
