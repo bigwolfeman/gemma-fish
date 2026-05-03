@@ -245,7 +245,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // ── Translation ─────────────────────────────────────────────────────
         val translated: String = try {
-            engine.translate(text, sourceLang.bcp47, targetLang.bcp47)
+            engine.translate(text, sourceLang.displayName, targetLang.displayName)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
