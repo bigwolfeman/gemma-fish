@@ -1,12 +1,7 @@
 package com.gemmatranslator.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -128,24 +123,18 @@ fun LanguageSelector(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         tonalElevation = 8.dp,
                     ) {
-                        AnimatedVisibility(
-                            visible = expanded,
-                            enter = expandVertically() + fadeIn(tween(150)),
-                            exit = shrinkVertically() + fadeOut(tween(100)),
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 300.dp),
                         ) {
-                            LazyColumn(
-                                modifier = Modifier.heightIn(max = 300.dp),
-                            ) {
-                                items(Language.entries, key = { it.bcp47 }) { language ->
-                                    LanguageOption(
-                                        language = language,
-                                        isSelected = language == selectedLanguage,
-                                        onClick = {
-                                            onLanguageSelected(language)
-                                            expanded = false
-                                        },
-                                    )
-                                }
+                            items(Language.entries, key = { it.bcp47 }) { language ->
+                                LanguageOption(
+                                    language = language,
+                                    isSelected = language == selectedLanguage,
+                                    onClick = {
+                                        onLanguageSelected(language)
+                                        expanded = false
+                                    },
+                                )
                             }
                         }
                     }
@@ -166,7 +155,7 @@ private fun LanguageOption(
             .fillMaxWidth()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(bounded = true),
+                indication = ripple(),
                 onClick = onClick,
             )
             .background(

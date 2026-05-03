@@ -1,3 +1,3 @@
-# Gemma / LiteRT
--keep class com.google.ai.edge.** { *; }
--dontwarn com.google.ai.edge.**
+# LiteRT-LM
+-keep class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**

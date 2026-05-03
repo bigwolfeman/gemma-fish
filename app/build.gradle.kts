@@ -31,12 +31,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -55,10 +57,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Google AI Edge / LiteRT for Gemma
-    implementation("com.google.ai.edge.litert:litert:2.0.0")
-    implementation("com.google.ai.edge.litert:litert-gpu:2.0.0")
-    implementation("com.google.ai.edge.litert:litert-lm:0.1.0")
+    // Google AI Edge / LiteRT-LM for Gemma
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.2")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
