@@ -35,12 +35,10 @@ class TranslationEngine(
 
     val isReady: Boolean get() = _loadingState.value is LoadingState.Ready
 
-    companion object {
-        private const val TAG = "TranslationEngine"
-    }
-
     private val inferenceMutex = Mutex()
     @Volatile private var engine: Engine? = null
+    @Volatile private var conversation: com.google.ai.edge.litertlm.Conversation? = null
+    private var conversationTurnCount = 0
     private val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val languageDetector = LanguageDetector { text ->
@@ -68,6 +66,8 @@ class TranslationEngine(
                 onProgress?.invoke(1f)
 
                 engine = e
+                conversation = e.createConversation()
+                conversationTurnCount = 0
                 _loadingState.value = LoadingState.Ready
                 Log.i(TAG, "Gemma E2B model loaded from $modelPath")
             } catch (e: Exception) {
@@ -78,9 +78,17 @@ class TranslationEngine(
     }
 
     override fun close() {
+        conversation?.close()
+        conversation = null
         engine?.close()
         engine = null
         _loadingState.value = LoadingState.Idle
+    }
+
+    fun resetConversation() {
+        conversation?.close()
+        conversation = engine?.createConversation()
+        conversationTurnCount = 0
     }
 
     suspend fun translate(text: String, sourceLang: String, targetLang: String): String {
@@ -117,12 +125,22 @@ class TranslationEngine(
         inferenceMutex.withLock {
             withContext(Dispatchers.Default) {
                 val e = engine ?: throw IllegalStateException("Engine not loaded")
-                e.createConversation().use { conv ->
-                    val message = conv.sendMessage(prompt)
-                    extractText(message)
+                if (conversation == null || conversationTurnCount >= MAX_TURNS_BEFORE_RESET) {
+                    conversation?.close()
+                    conversation = e.createConversation()
+                    conversationTurnCount = 0
                 }
+                val conv = conversation!!
+                val message = conv.sendMessage(prompt)
+                conversationTurnCount++
+                extractText(message)
             }
         }
+
+    companion object {
+        private const val TAG = "TranslationEngine"
+        private const val MAX_TURNS_BEFORE_RESET = 30
+    }
 
     private fun extractText(message: Message): String {
         val contents = message.contents.contents
@@ -137,14 +155,19 @@ class TranslationEngine(
     ) = inferenceMutex.withLock {
         withContext(Dispatchers.Default) {
             val e = engine ?: throw IllegalStateException("Engine not loaded")
-            val fullBuilder = StringBuilder()
-            e.createConversation().use { conv ->
-                conv.sendMessageAsync(prompt).collect { message ->
-                    val chunk = extractText(message)
-                    fullBuilder.append(chunk)
-                    onPartial(chunk)
-                }
+            if (conversation == null || conversationTurnCount >= MAX_TURNS_BEFORE_RESET) {
+                conversation?.close()
+                conversation = e.createConversation()
+                conversationTurnCount = 0
             }
+            val conv = conversation!!
+            val fullBuilder = StringBuilder()
+            conv.sendMessageAsync(prompt).collect { message ->
+                val chunk = extractText(message)
+                fullBuilder.append(chunk)
+                onPartial(chunk)
+            }
+            conversationTurnCount++
             onDone(fullBuilder.toString().trim())
         }
     }

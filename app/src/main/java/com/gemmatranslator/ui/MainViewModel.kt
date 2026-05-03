@@ -154,6 +154,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setLeftLanguage(language: Language) {
         _uiState.update { it.copy(leftLanguage = language) }
         syncPipelineLanguages()
+        engine.resetConversation()
     }
 
     /**
@@ -163,6 +164,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setRightLanguage(language: Language) {
         _uiState.update { it.copy(rightLanguage = language) }
         syncPipelineLanguages()
+        engine.resetConversation()
     }
 
     // ── Pipeline control ──────────────────────────────────────────────────────
