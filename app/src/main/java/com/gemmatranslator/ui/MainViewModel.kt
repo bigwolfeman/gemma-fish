@@ -298,68 +298,125 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun detectLanguageFast(text: String, candidateLang: Language): Boolean {
         val lower = text.lowercase()
         val words = lower.split("\\s+".toRegex())
-        return when (candidateLang.bcp47.substringBefore('-')) {
-            "es" -> {
-                val markers = setOf("el", "la", "los", "las", "de", "en", "que", "es", "un", "una",
-                    "por", "con", "para", "como", "pero", "más", "muy", "está", "son", "tiene",
-                    "hola", "sí", "no", "yo", "tú", "esto", "eso", "bien", "bueno", "también",
-                    "cómo", "dónde", "qué", "cuándo", "hacer", "puede", "todo", "nada")
-                val hasAccents = lower.any { it in "áéíóúñ¿¡ü" }
-                val matchCount = words.count { it in markers }
-                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
-            }
-            "fr" -> {
-                val markers = setOf("le", "la", "les", "de", "des", "du", "un", "une", "est",
-                    "et", "en", "que", "qui", "dans", "pour", "avec", "sur", "pas", "nous",
-                    "vous", "je", "il", "elle", "ce", "cette", "sont", "ont", "mais", "ou",
-                    "très", "bien", "oui", "non", "merci", "bonjour")
-                val hasAccents = lower.any { it in "àâçéèêëïîôùûüÿœæ" }
-                val matchCount = words.count { it in markers }
-                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
-            }
-            "de" -> {
-                val markers = setOf("der", "die", "das", "ein", "eine", "ist", "und", "ich",
-                    "du", "er", "sie", "wir", "ihr", "nicht", "mit", "auf", "für", "von",
-                    "aber", "oder", "wenn", "auch", "nur", "noch", "schon", "sehr", "gut",
-                    "ja", "nein", "danke", "bitte", "haben", "sein", "werden")
-                val hasChars = lower.any { it in "äöüß" }
-                val matchCount = words.count { it in markers }
-                hasChars || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
-            }
-            "pt" -> {
-                val markers = setOf("o", "a", "os", "as", "de", "do", "da", "em", "no", "na",
-                    "um", "uma", "que", "não", "com", "para", "por", "mais", "mas", "muito",
-                    "bem", "sim", "está", "são", "tem", "você", "eu", "ele", "ela", "isso",
-                    "obrigado", "olá", "como", "onde", "quando")
-                val hasAccents = lower.any { it in "àáâãçéêíóôõú" }
-                val matchCount = words.count { it in markers }
-                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
-            }
-            "ja" -> lower.any { it.code in 0x3041..0x309F || it.code in 0x30A0..0x30FF || it.code in 0x4E00..0x9FFF }
-            "ko" -> lower.any { it.code in 0xAC00..0xD7AF }
-            "zh" -> lower.any { it.code in 0x4E00..0x9FFF }
-            "ar" -> lower.any { it.code in 0x0600..0x06FF }
-            "hi" -> lower.any { it.code in 0x0900..0x097F }
-            "ru" -> lower.any { it.code in 0x0400..0x04FF }
-            "it" -> {
-                val markers = setOf("il", "lo", "la", "le", "gli", "un", "una", "di", "del",
-                    "che", "è", "non", "per", "con", "sono", "come", "anche", "più", "ma",
-                    "io", "tu", "lui", "lei", "noi", "questo", "quello", "bene", "sì", "grazie")
-                val hasAccents = lower.any { it in "àèéìòù" }
-                val matchCount = words.count { it in markers }
-                hasAccents || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
-            }
-            "tr" -> {
-                val markers = setOf("bir", "ve", "bu", "için", "ile", "de", "da", "ben",
-                    "sen", "ne", "var", "yok", "çok", "iyi", "evet", "hayır", "nasıl")
-                val hasChars = lower.any { it in "çğıöşü" }
-                val matchCount = words.count { it in markers }
-                hasChars || matchCount >= 2
-            }
-            "vi" -> lower.any { it in "ăâđêôơư" || (it.code in 0x0300..0x036F) }
-            "th" -> lower.any { it.code in 0x0E00..0x0E7F }
-            else -> false
+        val code = candidateLang.bcp47.substringBefore('-')
+
+        // Unique script detection — conclusive if any characters match
+        scriptRange(code)?.let { range ->
+            return lower.any { it.code in range }
         }
+
+        // Latin-script languages — use word markers + diacritics
+        val (markers, diacritics) = latinMarkers(code) ?: return false
+        val hasSpecialChars = diacritics.isNotEmpty() && lower.any { it in diacritics }
+        val matchCount = words.count { it in markers }
+        return hasSpecialChars || matchCount >= 2 || (matchCount >= 1 && words.size <= 4)
+    }
+
+    private fun scriptRange(code: String): IntRange? = when (code) {
+        "ja" -> null // Japanese uses mixed scripts, handled specially
+        "zh" -> 0x4E00..0x9FFF
+        "ko" -> 0xAC00..0xD7AF
+        "ar", "fa", "ur", "ps" -> 0x0600..0x06FF
+        "he" -> 0x0590..0x05FF
+        "hi", "mr", "ne" -> 0x0900..0x097F
+        "bn" -> 0x0980..0x09FF
+        "gu" -> 0x0A80..0x0AFF
+        "pa" -> 0x0A00..0x0A7F
+        "ta" -> 0x0B80..0x0BFF
+        "te" -> 0x0C00..0x0C7F
+        "kn" -> 0x0C80..0x0CFF
+        "ml" -> 0x0D00..0x0D7F
+        "si" -> 0x0D80..0x0DFF
+        "th" -> 0x0E00..0x0E7F
+        "lo" -> 0x0E80..0x0EFF
+        "my" -> 0x1000..0x109F
+        "km" -> 0x1780..0x17FF
+        "ka" -> 0x10A0..0x10FF
+        "hy" -> 0x0530..0x058F
+        "am" -> 0x1200..0x137F
+        "ru", "uk", "bg", "mk", "sr", "mn", "kk", "uz" -> 0x0400..0x04FF
+        "el" -> 0x0370..0x03FF
+        else -> null
+    }
+
+    private fun latinMarkers(code: String): Pair<Set<String>, String>? = when (code) {
+        "ja" -> setOf("の", "は", "が", "を", "に", "で", "と", "も", "から", "まで", "です", "ます") to ""
+        "es" -> setOf("el", "la", "los", "las", "de", "en", "que", "es", "un", "una",
+            "por", "con", "para", "como", "pero", "muy", "está", "son",
+            "hola", "sí", "yo", "tú", "bien", "bueno", "también") to "áéíóúñ¿¡"
+        "fr" -> setOf("le", "la", "les", "de", "des", "du", "un", "une", "est",
+            "et", "en", "que", "qui", "dans", "pour", "avec", "pas",
+            "je", "il", "elle", "nous", "vous", "oui", "non", "merci") to "àâçéèêëïîôùûüÿœæ"
+        "de" -> setOf("der", "die", "das", "ein", "eine", "ist", "und", "ich",
+            "nicht", "mit", "auf", "für", "von", "aber", "oder", "wenn",
+            "ja", "nein", "danke", "bitte", "haben", "sein") to "äöüß"
+        "pt" -> setOf("o", "os", "as", "de", "do", "da", "em", "no", "na",
+            "um", "uma", "que", "não", "com", "para", "por", "mais",
+            "sim", "está", "são", "você", "eu", "obrigado") to "àáâãçéêíóôõú"
+        "it" -> setOf("il", "lo", "la", "le", "gli", "un", "una", "di", "del",
+            "che", "è", "non", "per", "con", "sono", "come", "anche",
+            "io", "tu", "questo", "bene", "sì", "grazie") to "àèéìòù"
+        "tr" -> setOf("bir", "ve", "bu", "için", "ile", "ben", "sen",
+            "var", "yok", "çok", "iyi", "evet", "hayır", "nasıl") to "çğıöşü"
+        "vi" -> setOf("là", "của", "và", "có", "được", "không", "này",
+            "cho", "với", "từ", "như", "đã", "sẽ", "tôi") to "ăâđêôơư"
+        "nl" -> setOf("de", "het", "een", "van", "en", "in", "is", "dat",
+            "niet", "op", "zij", "hij", "wij", "maar", "ook", "met") to "ëïé"
+        "pl" -> setOf("nie", "jest", "na", "się", "to", "że", "jak",
+            "tak", "ale", "już", "tylko", "czy", "bardzo", "dobrze") to "ąćęłńóśźż"
+        "cs" -> setOf("je", "na", "se", "že", "to", "jak", "ale",
+            "tak", "jsem", "není", "jsou", "také", "velmi", "dobře") to "áčďéěíňóřšťúůýž"
+        "ro" -> setOf("este", "sunt", "nu", "și", "dar", "sau", "care",
+            "mai", "foarte", "bine", "da", "cum", "unde", "când") to "ăâîșț"
+        "hu" -> setOf("egy", "nem", "van", "hogy", "az", "meg", "már",
+            "igen", "nagyon", "köszönöm", "jó", "csak", "mint") to "áéíóöőúüű"
+        "sv" -> setOf("och", "det", "att", "en", "ett", "är", "inte",
+            "som", "för", "med", "har", "den", "jag", "kan", "från") to "åäö"
+        "da" -> setOf("og", "det", "er", "en", "at", "ikke", "med",
+            "har", "kan", "jeg", "som", "den", "fra", "skal") to "æøå"
+        "no" -> setOf("og", "det", "er", "en", "at", "ikke", "med",
+            "har", "kan", "jeg", "som", "den", "fra", "skal") to "æøå"
+        "fi" -> setOf("on", "ei", "ja", "se", "että", "hän", "oli",
+            "mutta", "niin", "kuin", "myös", "vain", "hyvin", "kiitos") to "äö"
+        "id", "ms" -> setOf("dan", "yang", "di", "ini", "itu", "dengan", "untuk",
+            "dari", "pada", "adalah", "tidak", "ada", "akan", "saya", "kami") to ""
+        "sw" -> setOf("na", "ya", "ni", "kwa", "wa", "katika", "hii",
+            "sana", "ndiyo", "hapana", "asante", "habari", "jambo", "karibu") to ""
+        "ca" -> setOf("el", "la", "els", "les", "de", "amb", "que", "és",
+            "no", "sí", "molt", "bé", "gràcies", "hola") to "àèéíïòóúüç"
+        "hr" -> setOf("je", "na", "se", "da", "ali", "su", "ako",
+            "samo", "vrlo", "dobro", "hvala", "molim") to "čćđšž"
+        "sk" -> setOf("je", "na", "sa", "že", "to", "ale", "tak",
+            "som", "nie", "áno", "veľmi", "dobre", "ďakujem") to "áäčďéíľĺňóôŕšťúýž"
+        "sl" -> setOf("je", "na", "se", "da", "ali", "so", "če",
+            "samo", "zelo", "dobro", "hvala", "prosim") to "čšž"
+        "et" -> setOf("on", "ei", "ja", "see", "kui", "aga", "ka",
+            "väga", "hästi", "jah", "tänan", "palun") to "äöüõšž"
+        "lv" -> setOf("ir", "un", "ka", "ar", "no", "bet", "vai",
+            "ļoti", "labi", "jā", "nē", "paldies") to "āčēģīķļņšūž"
+        "lt" -> setOf("ir", "yra", "ne", "kad", "su", "bet", "ar",
+            "labai", "gerai", "taip", "ačiū", "prašau") to "ąčęėįšųūž"
+        "is" -> setOf("og", "er", "að", "ekki", "með", "sem", "en",
+            "já", "nei", "mjög", "vel", "takk") to "áðéíóúýþæö"
+        "az" -> setOf("və", "bir", "bu", "ilə", "üçün", "deyil",
+            "bəli", "xeyr", "çox", "yaxşı") to "çəğıöşü"
+        "fil" -> setOf("ang", "ng", "sa", "na", "at", "ay", "mga",
+            "hindi", "oo", "salamat", "maganda", "kumusta") to ""
+        "ha" -> setOf("da", "na", "shi", "ne", "ba", "mai", "amma",
+            "sosai", "nagode", "sannu", "ina") to "ɓɗƙ"
+        "ig" -> setOf("na", "bụ", "nke", "ya", "ma", "ọ", "dị",
+            "ọfụma", "daalu", "ndewo", "ee", "mba") to "ịọụ"
+        "yo" -> setOf("ni", "ti", "si", "àti", "kò", "lè", "ṣe",
+            "dáadáa", "ẹ", "bẹ́ẹ̀ni", "rárá") to "ẹọṣ"
+        "xh" -> setOf("na", "le", "xa", "nge", "ngo", "hayi", "ewe",
+            "kakhulu", "enkosi", "molo", "yintoni") to ""
+        "zu" -> setOf("na", "le", "uma", "nge", "ngo", "cha", "yebo",
+            "kakhulu", "ngiyabonga", "sawubona", "yini") to ""
+        "so" -> setOf("waa", "iyo", "ka", "oo", "ah", "maya", "haa",
+            "aad", "mahadsanid", "nabad", "maxaa") to ""
+        "cy" -> setOf("yn", "mae", "ac", "ar", "am", "nad", "oes",
+            "iawn", "da", "diolch", "bore", "shwmae") to "âêîôûŵŷ"
+        else -> null
     }
 
     private fun emptyResult() = TranslationResult(

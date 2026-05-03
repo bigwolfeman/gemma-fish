@@ -327,7 +327,7 @@ private fun AboutSection(modifier: Modifier = Modifier) {
             AboutRow(label = "Model", value = "Gemma 4 E2B (on-device)")
             AboutRow(label = "Version", value = "1.0.0")
             AboutRow(label = "Inference", value = "Google AI Edge LiteRT")
-            AboutRow(label = "Supported languages", value = "15 languages")
+            AboutRow(label = "Supported languages", value = "70+ languages")
             Text(
                 text = "All translation happens entirely on-device. No audio or text is sent to any server.",
                 style = MaterialTheme.typography.bodyMedium,
