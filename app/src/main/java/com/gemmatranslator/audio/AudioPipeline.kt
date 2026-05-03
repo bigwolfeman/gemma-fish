@@ -62,6 +62,7 @@ class AudioPipeline(
     private val audioRouter = AudioRouter(context)
     private val speechRecognizer = SpeechRecognitionManager(context)
     private val tts = TextToSpeechManager(context, audioRouter)
+    private val mmsTts = MmsTtsEngine(context)
 
     // Serialized TTS output queue. BUFFERED so translation bursts don't block.
     private val ttsQueue = Channel<TranslationResult>(capacity = Channel.BUFFERED)
@@ -138,6 +139,7 @@ class AudioPipeline(
     fun release() {
         stop()
         tts.release()
+        mmsTts.release()
         audioRouter.unregister()
         speechRecognizer.release()
         scope.cancel()
@@ -226,12 +228,25 @@ class AudioPipeline(
                 if (result.translatedText.isBlank()) continue
 
                 speechRecognizer.stop()
-                Log.d(TAG, "Speaking [${result.targetChannel}] \"${result.translatedText}\"")
-                tts.speak(
-                    text = result.translatedText,
-                    language = channelLanguage(result.targetChannel),
-                    channel = result.targetChannel,
+                val lang = channelLanguage(result.targetChannel)
+                val pan = audioRouter.channelToPan(
+                    audioRouter.resolveChannel(result.targetChannel)
                 )
+                Log.d(TAG, "Speaking [${result.targetChannel}] \"${result.translatedText}\"")
+
+                val spokeWithMms = mmsTts.isLanguageAvailable(lang) &&
+                    withContext(Dispatchers.Default) {
+                        mmsTts.speak(result.translatedText, lang, pan)
+                    }
+
+                if (!spokeWithMms) {
+                    tts.speak(
+                        text = result.translatedText,
+                        language = lang,
+                        channel = result.targetChannel,
+                    )
+                }
+
                 if (isRunning) speechRecognizer.start()
             }
         }

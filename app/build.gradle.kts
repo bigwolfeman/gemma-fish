@@ -60,6 +60,9 @@ dependencies {
     // Google AI Edge / LiteRT-LM for Gemma
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.2")
 
+    // Sherpa-ONNX for MMS-TTS (1100+ language offline TTS)
+    implementation("com.github.k2-fsa:sherpa-onnx:v1.13.0")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
