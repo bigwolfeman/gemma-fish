@@ -166,7 +166,7 @@ class AudioPipeline(
 
         // Update recognition locale to the dominant left-channel language.
         // The translation fn is responsible for actual language detection.
-        speechRecognizer.setLocale(java.util.Locale.forLanguageTag(left.bcp47))
+        speechRecognizer.setLocale(speechLocaleFor(left.bcp47))
         Log.d(TAG, "Languages -> left=${left.bcp47} right=${right.bcp47}")
     }
 
@@ -237,10 +237,25 @@ class AudioPipeline(
         }
     }
 
-    /** Map a channel back to the configured language tag for TTS voice selection. */
     private fun channelLanguage(channel: AudioChannel): String = when (channel) {
         AudioChannel.LEFT  -> leftLanguage
         AudioChannel.RIGHT -> rightLanguage
-        AudioChannel.BOTH  -> leftLanguage   // SPEAKER mode — single voice
+        AudioChannel.BOTH  -> leftLanguage
+    }
+
+    private fun speechLocaleFor(bcp47: String): java.util.Locale {
+        if (bcp47.contains('-')) return java.util.Locale.forLanguageTag(bcp47)
+        val regionMap = mapOf(
+            "en" to "US", "es" to "ES", "fr" to "FR", "de" to "DE", "pt" to "BR",
+            "zh" to "CN", "ja" to "JP", "ko" to "KR", "ar" to "SA", "hi" to "IN",
+            "ru" to "RU", "it" to "IT", "tr" to "TR", "vi" to "VN", "th" to "TH",
+            "nl" to "NL", "pl" to "PL", "cs" to "CZ", "ro" to "RO", "hu" to "HU",
+            "sv" to "SE", "da" to "DK", "no" to "NO", "fi" to "FI", "id" to "ID",
+            "ms" to "MY", "uk" to "UA", "bg" to "BG", "el" to "GR", "he" to "IL",
+            "fa" to "IR", "bn" to "BD", "sw" to "KE", "zu" to "ZA", "xh" to "ZA",
+            "yo" to "NG", "ig" to "NG", "ha" to "NG", "am" to "ET", "so" to "SO",
+        )
+        val region = regionMap[bcp47] ?: bcp47.uppercase()
+        return java.util.Locale(bcp47, region)
     }
 }
