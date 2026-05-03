@@ -44,16 +44,23 @@ import java.util.concurrent.atomic.AtomicLong
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
-        /** Model filename expected in context.filesDir. */
-        private const val MODEL_FILE_NAME = "gemma4_e2b.task"
+        private const val MODEL_FILE_NAME = "gemma-4-E2B-it.litertlm"
     }
 
     // ── Dependencies ────────────────────────────────────────────────────────
 
     private val engine: TranslationEngine = TranslationEngine(
         context   = application,
-        modelPath = File(application.filesDir, MODEL_FILE_NAME).absolutePath,
+        modelPath = resolveModelPath(application),
     )
+
+    private fun resolveModelPath(app: Application): String {
+        val externalFile = File(app.getExternalFilesDir(null), MODEL_FILE_NAME)
+        if (externalFile.exists()) return externalFile.absolutePath
+        val internalFile = File(app.filesDir, MODEL_FILE_NAME)
+        if (internalFile.exists()) return internalFile.absolutePath
+        return externalFile.absolutePath
+    }
 
     /**
      * Pipeline is created lazily so RECORD_AUDIO permission is guaranteed granted
