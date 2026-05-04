@@ -1,6 +1,7 @@
 package com.gemmatranslator.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -17,11 +18,15 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,15 +34,20 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -53,7 +63,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,8 +76,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.gemmatranslator.model.Language
 import com.gemmatranslator.model.TranslationEntry
 import com.gemmatranslator.model.TranslationMode
@@ -76,6 +90,11 @@ import com.gemmatranslator.ui.theme.DisplayGradientEnd
 import com.gemmatranslator.ui.theme.DisplayGradientStart
 import com.gemmatranslator.ui.theme.GemmaTranslatorTheme
 import com.gemmatranslator.ui.theme.ListeningRed
+import com.gemmatranslator.ui.theme.Neutral20
+import com.gemmatranslator.ui.theme.Primary40
+import com.gemmatranslator.ui.theme.Primary80
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 // ---------------------------------------------------------------------------
 // Main screen
@@ -89,6 +108,7 @@ fun MainScreen(
     onRightLanguageChange: (Language) -> Unit,
     onToggleListening: () -> Unit,
     onNavigateSettings: () -> Unit,
+    onNavigateModels: () -> Unit = {},
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
@@ -110,7 +130,10 @@ fun MainScreen(
             Spacer(Modifier.height(8.dp))
 
             // ── Top bar ─────────────────────────────────────────────────────
-            TopBar(onNavigateSettings = onNavigateSettings)
+            TopBar(
+                onNavigateSettings = onNavigateSettings,
+                onNavigateModels = onNavigateModels,
+            )
 
             // ── Error banner ────────────────────────────────────────────────
             if (uiState.errorMessage != null) {
@@ -185,6 +208,7 @@ fun MainScreen(
 @Composable
 private fun TopBar(
     onNavigateSettings: () -> Unit,
+    onNavigateModels: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -205,12 +229,21 @@ private fun TopBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = onNavigateSettings) {
-            Icon(
-                imageVector = Icons.Filled.Settings,
-                contentDescription = "Settings",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Row {
+            IconButton(onClick = onNavigateModels) {
+                Icon(
+                    imageVector = Icons.Filled.CloudDownload,
+                    contentDescription = "Voice Models",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onNavigateSettings) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -248,46 +281,70 @@ private fun TranslationDisplayArea(
     uiState: TranslatorUiState,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(20.dp),
-            ),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.Transparent,
-        tonalElevation = 0.dp,
-    ) {
-        Box(
+    // "Show to Speaker" overlay state – lives here so it sits above the card list
+    var showToSpeakerEntry by remember { mutableStateOf<TranslationEntry?>(null) }
+
+    Box(modifier = modifier) {
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(DisplayGradientStart, DisplayGradientEnd),
-                    ),
-                )
-                .padding(20.dp),
+                .clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    shape = RoundedCornerShape(20.dp),
+                ),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.Transparent,
+            tonalElevation = 0.dp,
         ) {
-            when {
-                uiState.isModelLoading -> {
-                    ModelLoadingState(progress = uiState.modelLoadingProgress ?: 0f)
-                }
-
-                uiState.isListening
-                        || uiState.pendingRecognizedText != null
-                        || uiState.latestTranslation != null
-                        || uiState.translationHistory.isNotEmpty() -> {
-                    LiveTranslationContent(
-                        isListening = uiState.isListening,
-                        pendingText = uiState.pendingRecognizedText,
-                        latestEntry = uiState.latestTranslation,
-                        history = uiState.translationHistory,
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(DisplayGradientStart, DisplayGradientEnd),
+                        ),
                     )
-                }
+                    .padding(20.dp),
+            ) {
+                when {
+                    uiState.isModelLoading -> {
+                        ModelLoadingState(progress = uiState.modelLoadingProgress ?: 0f)
+                    }
 
-                else -> IdleBranding()
+                    uiState.isListening
+                            || uiState.pendingRecognizedText != null
+                            || uiState.latestTranslation != null
+                            || uiState.translationHistory.isNotEmpty() -> {
+                        LiveTranslationContent(
+                            isListening = uiState.isListening,
+                            pendingText = uiState.pendingRecognizedText,
+                            latestEntry = uiState.latestTranslation,
+                            history = uiState.translationHistory,
+                            onCardTap = { entry -> showToSpeakerEntry = entry },
+                        )
+                    }
+
+                    else -> IdleBranding()
+                }
+            }
+        }
+
+        // Show-to-Speaker full-screen overlay
+        AnimatedVisibility(
+            visible = showToSpeakerEntry != null,
+            enter = fadeIn(tween(180)) + scaleIn(tween(200), initialScale = 0.96f),
+            exit = fadeOut(tween(150)) + scaleOut(tween(160), targetScale = 0.96f),
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(10f),
+        ) {
+            showToSpeakerEntry?.let { entry ->
+                ShowToSpeakerOverlay(
+                    entry = entry,
+                    onDismiss = { showToSpeakerEntry = null },
+                )
             }
         }
     }
@@ -367,6 +424,7 @@ private fun LiveTranslationContent(
     pendingText: String?,
     latestEntry: TranslationEntry?,
     history: List<TranslationEntry>,
+    onCardTap: (TranslationEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -379,7 +437,7 @@ private fun LiveTranslationContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = listState,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         reverseLayout = false,
     ) {
         // Listening / pending item
@@ -398,6 +456,7 @@ private fun LiveTranslationContent(
                 TranslationEntryCard(
                     entry = latestEntry,
                     isLatest = true,
+                    onTap = { onCardTap(latestEntry) },
                 )
             }
         }
@@ -409,7 +468,11 @@ private fun LiveTranslationContent(
             history
 
         items(historyToShow, key = { it.id }) { entry ->
-            TranslationEntryCard(entry = entry, isLatest = false)
+            TranslationEntryCard(
+                entry = entry,
+                isLatest = false,
+                onTap = { onCardTap(entry) },
+            )
         }
     }
 }
@@ -447,47 +510,244 @@ private fun PendingTranscriptCard(
     }
 }
 
+// Returns a human-friendly relative time string for a given Instant
+private fun relativeTime(timestamp: Instant): String {
+    val now = Instant.now()
+    val secondsAgo = ChronoUnit.SECONDS.between(timestamp, now).coerceAtLeast(0)
+    return when {
+        secondsAgo < 10   -> "just now"
+        secondsAgo < 60   -> "${secondsAgo}s ago"
+        secondsAgo < 3600 -> "${secondsAgo / 60}m ago"
+        else              -> "${secondsAgo / 3600}h ago"
+    }
+}
+
 @Composable
 private fun TranslationEntryCard(
     entry: TranslationEntry,
     isLatest: Boolean,
+    onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val alpha = if (isLatest) 1f else 0.6f
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+    val cardAlpha = if (isLatest) 1f else 0.55f
+    val cardContainerColor = if (isLatest)
+        Neutral20.copy(alpha = 0.95f)
+    else
+        Neutral20.copy(alpha = 0.55f)
+    val borderColor = if (isLatest)
+        Primary40.copy(alpha = 0.55f)
+    else
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onTap,
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isLatest) 6.dp else 2.dp,
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isLatest) 1.dp else 0.5.dp,
+            color = borderColor,
+        ),
     ) {
-        // Original text
-        Text(
-            text = entry.originalText,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
-            fontStyle = FontStyle.Italic,
-        )
-        // Translation
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                text = "→",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
-            )
+            // ── Header: language pair + timestamp ──────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = entry.sourceLang.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Primary80.copy(alpha = cardAlpha),
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha * 0.6f),
+                        modifier = Modifier.size(10.dp),
+                    )
+                    Text(
+                        text = entry.targetLang.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Primary80.copy(alpha = cardAlpha),
+                    )
+                }
+                Text(
+                    text = relativeTime(entry.timestamp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha * 0.6f),
+                )
+            }
+
+            // ── Two-column content: source | divider | translation ─────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                // Source column
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = entry.sourceLang.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha * 0.7f),
+                    )
+                    Text(
+                        text = entry.originalText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha),
+                        fontStyle = FontStyle.Italic,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                // Vertical divider with arrow
+                Column(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Primary40.copy(alpha = cardAlpha * 0.5f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        ),
+                ) {}
+
+                // Translation column
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = entry.targetLang.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = cardAlpha * 0.8f),
+                    )
+                    Text(
+                        text = entry.translatedText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (isLatest) FontWeight.SemiBold else FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = cardAlpha),
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            // ── Tap hint (latest only) ─────────────────────────────────────
+            if (isLatest) {
+                Text(
+                    text = "Tap to show full screen",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Primary80.copy(alpha = 0.45f),
+                    modifier = Modifier.align(Alignment.End),
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Show-to-Speaker full-screen overlay
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun ShowToSpeakerOverlay(
+    entry: TranslationEntry,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xE6050710)) // ~90% opaque near-black
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            // Language route badge at top
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = entry.sourceLang.displayName,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Primary80.copy(alpha = 0.7f),
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Primary80.copy(alpha = 0.5f),
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = entry.targetLang.displayName,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Primary80,
+                )
+            }
+
+            // The big translated text
             Text(
                 text = entry.translatedText,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isLatest) FontWeight.Medium else FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                lineHeight = MaterialTheme.typography.displayMedium.lineHeight,
+            )
+
+            // Dismiss hint
+            Text(
+                text = "Tap anywhere to dismiss",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.3f),
             )
         }
-        // Language pair label
-        Text(
-            text = "${entry.sourceLang.displayName} → ${entry.targetLang.displayName}",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha * 0.7f),
-        )
     }
 }
 

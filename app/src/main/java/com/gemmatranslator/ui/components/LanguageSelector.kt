@@ -16,15 +16,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.ripple
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
@@ -51,11 +62,17 @@ fun LanguageSelector(
     enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(durationMillis = 200),
         label = "chevron",
     )
+
+    // Clear search when popup closes
+    LaunchedEffect(expanded) {
+        if (!expanded) searchQuery = ""
+    }
 
     Column(modifier = modifier) {
         Text(
@@ -123,18 +140,56 @@ fun LanguageSelector(
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         tonalElevation = 8.dp,
                     ) {
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 300.dp),
-                        ) {
-                            items(Language.entries, key = { it.bcp47 }) { language ->
-                                LanguageOption(
-                                    language = language,
-                                    isSelected = language == selectedLanguage,
-                                    onClick = {
-                                        onLanguageSelected(language)
-                                        expanded = false
-                                    },
-                                )
+                        Column {
+                            LanguageSearchField(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it },
+                                onClear = { searchQuery = "" },
+                            )
+
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                thickness = 0.5.dp,
+                            )
+
+                            val filteredLanguages = remember(searchQuery) {
+                                if (searchQuery.isBlank()) {
+                                    Language.entries
+                                } else {
+                                    Language.entries.filter { language ->
+                                        language.displayName.contains(searchQuery.trim(), ignoreCase = true)
+                                    }
+                                }
+                            }
+
+                            if (filteredLanguages.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp, horizontal = 16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "No results for \"$searchQuery\"",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    )
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.heightIn(max = 260.dp),
+                                ) {
+                                    items(filteredLanguages, key = { it.bcp47 }) { language ->
+                                        LanguageOption(
+                                            language = language,
+                                            isSelected = language == selectedLanguage,
+                                            onClick = {
+                                                onLanguageSelected(language)
+                                                expanded = false
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -142,6 +197,68 @@ fun LanguageSelector(
             }
         }
     }
+}
+
+@Composable
+private fun LanguageSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .focusRequester(focusRequester),
+        placeholder = {
+            Text(
+                text = "Search languages…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            )
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.size(18.dp),
+            )
+        },
+        trailingIcon = if (query.isNotEmpty()) {
+            {
+                IconButton(
+                    onClick = onClear,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Clear,
+                        contentDescription = "Clear search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        } else null,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodySmall,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        shape = RoundedCornerShape(8.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
+        ),
+    )
 }
 
 @Composable

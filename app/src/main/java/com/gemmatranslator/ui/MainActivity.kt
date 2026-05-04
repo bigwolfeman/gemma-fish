@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
                     AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
-                            if (targetState == Screen.SETTINGS) {
+                            if (targetState == Screen.SETTINGS || targetState == Screen.MODELS) {
                                 (slideInHorizontally { it } + fadeIn()) togetherWith
                                         (slideOutHorizontally { -it } + fadeOut())
                             } else {
@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 },
                                 onNavigateSettings = { currentScreen = Screen.SETTINGS },
+                                onNavigateModels = { currentScreen = Screen.MODELS },
                             )
 
                             Screen.SETTINGS -> SettingsScreen(
@@ -116,6 +117,11 @@ class MainActivity : ComponentActivity() {
                                 onEchoTranslationToggle = { enabled ->
                                     settingsState = settingsState.copy(echoTranslation = enabled)
                                 },
+                                onNavigateBack = { currentScreen = Screen.MAIN },
+                                onNavigateModels = { currentScreen = Screen.MODELS },
+                            )
+
+                            Screen.MODELS -> ModelDownloadScreen(
                                 onNavigateBack = { currentScreen = Screen.MAIN },
                             )
                         }
@@ -150,4 +156,4 @@ class MainActivity : ComponentActivity() {
 // Navigation enum
 // ---------------------------------------------------------------------------
 
-private enum class Screen { MAIN, SETTINGS }
+private enum class Screen { MAIN, SETTINGS, MODELS }
