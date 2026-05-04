@@ -51,6 +51,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -58,7 +59,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,7 +70,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontStyle
@@ -86,19 +85,11 @@ import com.gemmatranslator.model.TranslationMode
 import com.gemmatranslator.model.TranslatorUiState
 import com.gemmatranslator.ui.components.LanguageSelector
 import com.gemmatranslator.ui.components.ModeToggle
-import com.gemmatranslator.ui.theme.DisplayGradientEnd
-import com.gemmatranslator.ui.theme.DisplayGradientStart
 import com.gemmatranslator.ui.theme.GemmaTranslatorTheme
 import com.gemmatranslator.ui.theme.ListeningRed
-import com.gemmatranslator.ui.theme.Neutral20
-import com.gemmatranslator.ui.theme.Primary40
-import com.gemmatranslator.ui.theme.Primary80
+import com.gemmatranslator.ui.theme.ListeningRedSoft
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-
-// ---------------------------------------------------------------------------
-// Main screen
-// ---------------------------------------------------------------------------
 
 @Composable
 fun MainScreen(
@@ -125,22 +116,19 @@ fun MainScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
-            // ── Top bar ─────────────────────────────────────────────────────
             TopBar(
                 onNavigateSettings = onNavigateSettings,
                 onNavigateModels = onNavigateModels,
             )
 
-            // ── Error banner ────────────────────────────────────────────────
             if (uiState.errorMessage != null) {
                 ErrorBanner(message = uiState.errorMessage)
             }
 
-            // ── Display area ────────────────────────────────────────────────
             TranslationDisplayArea(
                 uiState = uiState,
                 modifier = Modifier
@@ -148,14 +136,12 @@ fun MainScreen(
                     .weight(1f),
             )
 
-            // ── Mode toggle ─────────────────────────────────────────────────
             ModeToggle(
                 mode = uiState.mode,
                 onModeChange = { onModeChange() },
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // ── Language selectors ──────────────────────────────────────────
             val leftLabel = when (uiState.mode) {
                 TranslationMode.EARBUD  -> "Left Earbud"
                 TranslationMode.SPEAKER -> "Target 1"
@@ -185,7 +171,6 @@ fun MainScreen(
                 )
             }
 
-            // ── Listen FAB ──────────────────────────────────────────────────
             ListenFab(
                 isReady = uiState.isReady,
                 isModelLoading = uiState.isModelLoading,
@@ -193,17 +178,13 @@ fun MainScreen(
                 onClick = onToggleListening,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 4.dp),
             )
 
             Spacer(Modifier.height(4.dp))
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Top bar
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun TopBar(
@@ -216,20 +197,12 @@ private fun TopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column {
-            Text(
-                text = "Gemma",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = "Translator",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Row {
+        Text(
+            text = "GemmaFish",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             IconButton(onClick = onNavigateModels) {
                 Icon(
                     imageVector = Icons.Filled.CloudDownload,
@@ -248,65 +221,45 @@ private fun TopBar(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Error banner
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun ErrorBanner(
     message: String,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
+    Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.errorContainer,
-        tonalElevation = 2.dp,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer,
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(12.dp),
         )
     }
 }
-
-// ---------------------------------------------------------------------------
-// Translation display area
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun TranslationDisplayArea(
     uiState: TranslatorUiState,
     modifier: Modifier = Modifier,
 ) {
-    // "Show to Speaker" overlay state – lives here so it sits above the card list
     var showToSpeakerEntry by remember { mutableStateOf<TranslationEntry?>(null) }
 
     Box(modifier = modifier) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(20.dp))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = RoundedCornerShape(20.dp),
-                ),
-            shape = RoundedCornerShape(20.dp),
-            color = Color.Transparent,
-            tonalElevation = 0.dp,
+        Card(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(DisplayGradientStart, DisplayGradientEnd),
-                        ),
-                    )
-                    .padding(20.dp),
+                    .padding(16.dp),
             ) {
                 when {
                     uiState.isModelLoading -> {
@@ -331,7 +284,6 @@ private fun TranslationDisplayArea(
             }
         }
 
-        // Show-to-Speaker full-screen overlay
         AnimatedVisibility(
             visible = showToSpeakerEntry != null,
             enter = fadeIn(tween(180)) + scaleIn(tween(200), initialScale = 0.96f),
@@ -357,8 +309,6 @@ private fun IdleBranding(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = "🌐", style = MaterialTheme.typography.displayLarge)
-        Spacer(Modifier.height(12.dp))
         Text(
             text = "Ready to translate",
             style = MaterialTheme.typography.titleMedium,
@@ -369,7 +319,7 @@ private fun IdleBranding(modifier: Modifier = Modifier) {
         Text(
             text = "Tap the mic to begin",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.outline,
             textAlign = TextAlign.Center,
         )
     }
@@ -390,19 +340,19 @@ private fun ModelLoadingState(
             color = MaterialTheme.colorScheme.primary,
             strokeWidth = 4.dp,
             strokeCap = StrokeCap.Round,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier.size(48.dp),
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Loading Gemma 4...",
+            text = "Loading Gemma 4",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.height(8.dp))
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier
-                .fillMaxWidth(0.65f)
+                .fillMaxWidth(0.5f)
                 .height(4.dp)
                 .clip(RoundedCornerShape(2.dp)),
             color = MaterialTheme.colorScheme.primary,
@@ -413,7 +363,7 @@ private fun ModelLoadingState(
         Text(
             text = "${(progress * 100).toInt()}%",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -429,7 +379,6 @@ private fun LiveTranslationContent(
 ) {
     val listState = rememberLazyListState()
 
-    // Auto-scroll to top when new content arrives
     LaunchedEffect(pendingText, latestEntry) {
         listState.animateScrollToItem(0)
     }
@@ -437,10 +386,9 @@ private fun LiveTranslationContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = listState,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         reverseLayout = false,
     ) {
-        // Listening / pending item
         if (isListening || pendingText != null) {
             item(key = "pending") {
                 PendingTranscriptCard(
@@ -450,7 +398,6 @@ private fun LiveTranslationContent(
             }
         }
 
-        // Latest translation (highlighted)
         if (latestEntry != null) {
             item(key = "latest_${latestEntry.id}") {
                 TranslationEntryCard(
@@ -461,7 +408,6 @@ private fun LiveTranslationContent(
             }
         }
 
-        // Historical entries (de-emphasized)
         val historyToShow = if (latestEntry != null)
             history.filter { it.id != latestEntry.id }
         else
@@ -510,7 +456,6 @@ private fun PendingTranscriptCard(
     }
 }
 
-// Returns a human-friendly relative time string for a given Instant
 private fun relativeTime(timestamp: Instant): String {
     val now = Instant.now()
     val secondsAgo = ChronoUnit.SECONDS.between(timestamp, now).coerceAtLeast(0)
@@ -529,16 +474,6 @@ private fun TranslationEntryCard(
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardAlpha = if (isLatest) 1f else 0.55f
-    val cardContainerColor = if (isLatest)
-        Neutral20.copy(alpha = 0.95f)
-    else
-        Neutral20.copy(alpha = 0.55f)
-    val borderColor = if (isLatest)
-        Primary40.copy(alpha = 0.55f)
-    else
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -547,23 +482,24 @@ private fun TranslationEntryCard(
                 indication = null,
                 onClick = onTap,
             ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isLatest) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isLatest) 6.dp else 2.dp,
+            defaultElevation = if (isLatest) 2.dp else 0.dp,
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (isLatest) 1.dp else 0.5.dp,
-            color = borderColor,
-        ),
+        border = if (isLatest) androidx.compose.foundation.BorderStroke(
+            1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+        ) else null,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // ── Header: language pair + timestamp ──────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -577,29 +513,28 @@ private fun TranslationEntryCard(
                         text = entry.sourceLang.displayName,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = Primary80.copy(alpha = cardAlpha),
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Icon(
                         imageVector = Icons.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha * 0.6f),
+                        tint = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.size(10.dp),
                     )
                     Text(
                         text = entry.targetLang.displayName,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = Primary80.copy(alpha = cardAlpha),
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
                 Text(
                     text = relativeTime(entry.timestamp),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha * 0.6f),
+                    color = MaterialTheme.colorScheme.outline,
                 )
             }
 
-            // ── Two-column content: source | divider | translation ─────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -607,79 +542,52 @@ private fun TranslationEntryCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                // Source column
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Text(
-                        text = entry.sourceLang.displayName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha * 0.7f),
-                    )
                     Text(
                         text = entry.originalText,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = cardAlpha),
-                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
 
-                // Vertical divider with arrow
-                Column(
+                Box(
                     modifier = Modifier
                         .width(1.dp)
                         .fillMaxHeight()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Primary40.copy(alpha = cardAlpha * 0.5f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
-                ) {}
+                        .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                )
 
-                // Translation column
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Text(
-                        text = entry.targetLang.displayName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = cardAlpha * 0.8f),
-                    )
-                    Text(
                         text = entry.translatedText,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (isLatest) FontWeight.SemiBold else FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = cardAlpha),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isLatest) FontWeight.Medium else FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
-            // ── Tap hint (latest only) ─────────────────────────────────────
             if (isLatest) {
                 Text(
                     text = "Tap to show full screen",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Primary80.copy(alpha = 0.45f),
+                    color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.align(Alignment.End),
                 )
             }
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Show-to-Speaker full-screen overlay
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun ShowToSpeakerOverlay(
@@ -690,8 +598,8 @@ private fun ShowToSpeakerOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xE6050710)) // ~90% opaque near-black
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xF2FFFFFF))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -704,9 +612,8 @@ private fun ShowToSpeakerOverlay(
                 .fillMaxWidth()
                 .padding(horizontal = 32.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Language route badge at top
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -714,46 +621,38 @@ private fun ShowToSpeakerOverlay(
                 Text(
                     text = entry.sourceLang.displayName,
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Primary80.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Icon(
                     imageVector = Icons.Filled.ArrowForward,
                     contentDescription = null,
-                    tint = Primary80.copy(alpha = 0.5f),
+                    tint = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.size(16.dp),
                 )
                 Text(
                     text = entry.targetLang.displayName,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = Primary80,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
 
-            // The big translated text
             Text(
                 text = entry.translatedText,
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center,
-                lineHeight = MaterialTheme.typography.displayMedium.lineHeight,
             )
 
-            // Dismiss hint
             Text(
                 text = "Tap anywhere to dismiss",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.3f),
+                color = MaterialTheme.colorScheme.outline,
             )
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Listening pulse indicator
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun ListeningPulse(modifier: Modifier = Modifier) {
@@ -776,10 +675,6 @@ private fun ListeningPulse(modifier: Modifier = Modifier) {
     )
 }
 
-// ---------------------------------------------------------------------------
-// Listen FAB
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun ListenFab(
     isReady: Boolean,
@@ -789,7 +684,7 @@ private fun ListenFab(
     modifier: Modifier = Modifier,
 ) {
     val fabScale by animateFloatAsState(
-        targetValue = if (isListening) 1.08f else 1f,
+        targetValue = if (isListening) 1.05f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "fabScale",
     )
@@ -797,13 +692,14 @@ private fun ListenFab(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         FloatingActionButton(
             onClick = { if (isReady || isListening) onClick() },
             modifier = Modifier
-                .size(72.dp)
+                .size(64.dp)
                 .scale(fabScale),
+            shape = CircleShape,
             containerColor = when {
                 isModelLoading || !isReady && !isListening -> MaterialTheme.colorScheme.surfaceVariant
                 isListening -> ListeningRed
@@ -811,11 +707,10 @@ private fun ListenFab(
             },
             contentColor = when {
                 isModelLoading || !isReady && !isListening -> MaterialTheme.colorScheme.onSurfaceVariant
-                isListening -> Color.White
-                else -> MaterialTheme.colorScheme.onPrimary
+                else -> Color.White
             },
             elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = if (isListening) 12.dp else 6.dp,
+                defaultElevation = if (isListening) 8.dp else 4.dp,
             ),
         ) {
             AnimatedContent(
@@ -829,7 +724,7 @@ private fun ListenFab(
                 Icon(
                     imageVector = if (listening) Icons.Filled.MicOff else Icons.Filled.Mic,
                     contentDescription = if (listening) "Stop listening" else "Start listening",
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(28.dp),
                 )
             }
         }
@@ -847,14 +742,10 @@ private fun ListenFab(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Previews
-// ---------------------------------------------------------------------------
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun MainScreenIdlePreview() {
-    GemmaTranslatorTheme(darkTheme = true) {
+    GemmaTranslatorTheme {
         MainScreen(
             uiState = TranslatorUiState(isModelReady = true),
             onModeChange = {},
@@ -869,7 +760,7 @@ private fun MainScreenIdlePreview() {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun MainScreenListeningPreview() {
-    GemmaTranslatorTheme(darkTheme = true) {
+    GemmaTranslatorTheme {
         MainScreen(
             uiState = TranslatorUiState(
                 isModelReady = true,
@@ -878,48 +769,10 @@ private fun MainScreenListeningPreview() {
                 latestTranslation = TranslationEntry(
                     id = 1L,
                     originalText = "Hello, how are you today?",
-                    translatedText = "Hola, ¿cómo estás hoy?",
+                    translatedText = "Hola, como estas hoy?",
                     sourceLang = Language.ENGLISH,
                     targetLang = Language.SPANISH,
                 ),
-            ),
-            onModeChange = {},
-            onLeftLanguageChange = {},
-            onRightLanguageChange = {},
-            onToggleListening = {},
-            onNavigateSettings = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun MainScreenLoadingPreview() {
-    GemmaTranslatorTheme(darkTheme = true) {
-        MainScreen(
-            uiState = TranslatorUiState(
-                isModelReady = false,
-                modelLoadingProgress = 0.45f,
-            ),
-            onModeChange = {},
-            onLeftLanguageChange = {},
-            onRightLanguageChange = {},
-            onToggleListening = {},
-            onNavigateSettings = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun MainScreenSpeakerModePreview() {
-    GemmaTranslatorTheme(darkTheme = true) {
-        MainScreen(
-            uiState = TranslatorUiState(
-                isModelReady = true,
-                mode = TranslationMode.SPEAKER,
-                leftLanguage = Language.FRENCH,
-                rightLanguage = Language.GERMAN,
             ),
             onModeChange = {},
             onLeftLanguageChange = {},

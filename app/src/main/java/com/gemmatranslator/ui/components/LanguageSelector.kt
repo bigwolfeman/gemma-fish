@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -71,7 +70,6 @@ fun LanguageSelector(
         label = "chevron",
     )
 
-    // Clear search when popup closes
     LaunchedEffect(expanded) {
         if (!expanded) searchQuery = ""
     }
@@ -88,12 +86,12 @@ fun LanguageSelector(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .border(
                         width = 1.dp,
                         color = if (expanded) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                     )
                     .clickable(
                         enabled = enabled,
@@ -101,8 +99,7 @@ fun LanguageSelector(
                         indication = ripple(),
                     ) { if (enabled) expanded = !expanded },
                 color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(12.dp),
-                tonalElevation = if (expanded) 4.dp else 1.dp,
+                shape = RoundedCornerShape(10.dp),
             ) {
                 Row(
                     modifier = Modifier
@@ -141,8 +138,8 @@ fun LanguageSelector(
                             .navigationBarsPadding()
                             .imePadding(),
                         shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        tonalElevation = 8.dp,
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 4.dp,
                     ) {
                         Column {
                             Text(
@@ -159,7 +156,7 @@ fun LanguageSelector(
                             )
 
                             HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                color = MaterialTheme.colorScheme.outlineVariant,
                                 thickness = 0.5.dp,
                             )
 
@@ -183,7 +180,7 @@ fun LanguageSelector(
                                     Text(
                                         text = "No results for \"$searchQuery\"",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             } else {
@@ -231,7 +228,7 @@ private fun LanguageSearchField(
             .focusRequester(focusRequester),
         placeholder = {
             Text(
-                text = "Search languages…",
+                text = "Search languages...",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
             )
@@ -240,7 +237,7 @@ private fun LanguageSearchField(
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )
         },
@@ -253,7 +250,7 @@ private fun LanguageSearchField(
                     Icon(
                         imageVector = Icons.Filled.Clear,
                         contentDescription = "Clear search",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -264,10 +261,10 @@ private fun LanguageSearchField(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         shape = RoundedCornerShape(8.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         ),
     )
 }
@@ -297,7 +294,7 @@ private fun LanguageOption(
             text = language.displayName,
             style = MaterialTheme.typography.bodyMedium,
             color = if (isSelected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+            else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
         if (isSelected) {
@@ -311,10 +308,10 @@ private fun LanguageOption(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1A1B2E, widthDp = 200)
+@Preview(showBackground = true, widthDp = 200)
 @Composable
 private fun LanguageSelectorPreview() {
-    com.gemmatranslator.ui.theme.GemmaTranslatorTheme(darkTheme = true) {
+    com.gemmatranslator.ui.theme.GemmaTranslatorTheme {
         Box(modifier = Modifier.padding(16.dp)) {
             LanguageSelector(
                 label = "Left Earbud",

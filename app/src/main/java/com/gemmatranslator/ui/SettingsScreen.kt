@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,8 +29,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -50,19 +51,11 @@ import androidx.compose.ui.unit.dp
 import com.gemmatranslator.ui.theme.GemmaTranslatorTheme
 import kotlin.math.roundToInt
 
-// ---------------------------------------------------------------------------
-// Settings state contract
-// ---------------------------------------------------------------------------
-
 data class SettingsUiState(
-    val voiceSpeedMultiplier: Float = 1.0f,   // 0.5 – 2.0
+    val voiceSpeedMultiplier: Float = 1.0f,
     val autoDetectLanguage: Boolean = false,
-    val echoTranslation: Boolean = true,       // play translation through speaker
+    val echoTranslation: Boolean = true,
 )
-
-// ---------------------------------------------------------------------------
-// Settings screen
-// ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,7 +77,6 @@ fun SettingsScreen(
                     Text(
                         text = "Settings",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
                     )
                 },
                 navigationIcon = {
@@ -114,8 +106,7 @@ fun SettingsScreen(
         ) {
             Spacer(Modifier.height(4.dp))
 
-            // ── Audio section ───────────────────────────────────────────────
-            SettingsSectionHeader(title = "Audio")
+            SectionHeader(title = "Audio")
 
             VoiceSpeedSetting(
                 speed = state.voiceSpeedMultiplier,
@@ -142,8 +133,7 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
 
-            // ── Language section ────────────────────────────────────────────
-            SettingsSectionHeader(title = "Language")
+            SectionHeader(title = "Language")
 
             SettingsToggleRow(
                 icon = Icons.Filled.Language,
@@ -158,8 +148,7 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
 
-            // ── About section ───────────────────────────────────────────────
-            SettingsSectionHeader(title = "About")
+            SectionHeader(title = "About")
             AboutSection()
 
             Spacer(Modifier.height(32.dp))
@@ -167,12 +156,8 @@ fun SettingsScreen(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Section header
-// ---------------------------------------------------------------------------
-
 @Composable
-private fun SettingsSectionHeader(
+private fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
 ) {
@@ -184,10 +169,6 @@ private fun SettingsSectionHeader(
     )
 }
 
-// ---------------------------------------------------------------------------
-// Voice speed slider row
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun VoiceSpeedSetting(
     speed: Float,
@@ -196,7 +177,7 @@ private fun VoiceSpeedSetting(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
     ) {
@@ -218,7 +199,7 @@ private fun VoiceSpeedSetting(
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "${(speed * 10).roundToInt() / 10.0}×",
+                        text = "${(speed * 10).roundToInt() / 10.0}x",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -229,7 +210,7 @@ private fun VoiceSpeedSetting(
                 value = speed,
                 onValueChange = onSpeedChange,
                 valueRange = 0.5f..2.0f,
-                steps = 14,   // 0.1 increments between 0.5 and 2.0
+                steps = 14,
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(
@@ -237,23 +218,19 @@ private fun VoiceSpeedSetting(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = "0.5×",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    text = "0.5x",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
                 )
                 Text(
-                    text = "2.0×",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    text = "2.0x",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
                 )
             }
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Generic toggle row
-// ---------------------------------------------------------------------------
 
 @Composable
 private fun SettingsToggleRow(
@@ -266,7 +243,7 @@ private fun SettingsToggleRow(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
     ) {
@@ -291,7 +268,7 @@ private fun SettingsToggleRow(
                 )
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -303,10 +280,6 @@ private fun SettingsToggleRow(
     }
 }
 
-// ---------------------------------------------------------------------------
-// Nav row (tap to navigate, no toggle)
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun SettingsNavRow(
     icon: ImageVector,
@@ -317,7 +290,7 @@ private fun SettingsNavRow(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
     ) {
@@ -343,29 +316,25 @@ private fun SettingsNavRow(
                 )
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(14.dp),
             )
         }
     }
 }
 
-// ---------------------------------------------------------------------------
-// About section
-// ---------------------------------------------------------------------------
-
 @Composable
 private fun AboutSection(modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
     ) {
@@ -383,7 +352,7 @@ private fun AboutSection(modifier: Modifier = Modifier) {
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    text = "About Gemma Translator",
+                    text = "About GemmaFish",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -393,10 +362,10 @@ private fun AboutSection(modifier: Modifier = Modifier) {
             AboutRow(label = "Model", value = "Gemma 4 E2B (on-device)")
             AboutRow(label = "Version", value = "1.0.0")
             AboutRow(label = "Inference", value = "Google AI Edge LiteRT")
-            AboutRow(label = "Supported languages", value = "70+ languages")
+            AboutRow(label = "Supported languages", value = "70+")
             Text(
                 text = "All translation happens entirely on-device. No audio or text is sent to any server.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
             )
@@ -416,26 +385,22 @@ private fun AboutRow(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
-// ---------------------------------------------------------------------------
-// Preview
-// ---------------------------------------------------------------------------
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun SettingsScreenPreview() {
-    GemmaTranslatorTheme(darkTheme = true) {
+    GemmaTranslatorTheme {
         var state by remember { mutableStateOf(SettingsUiState()) }
         SettingsScreen(
             state = state,

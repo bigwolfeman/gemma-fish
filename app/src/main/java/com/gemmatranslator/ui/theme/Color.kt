@@ -2,45 +2,41 @@ package com.gemmatranslator.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Primary brand – deep indigo/blue-violet family
-val Primary80 = Color(0xFFB0C4FF)
-val Primary40 = Color(0xFF3355D1)
-val Primary20 = Color(0xFF1A2F9F)
+// Primary — deep teal
+val Primary = Color(0xFF0D7377)
+val PrimaryLight = Color(0xFF4DA8AB)
+val PrimaryDark = Color(0xFF064E51)
+val PrimaryContainer = Color(0xFFD5F0F0)
+val OnPrimaryContainer = Color(0xFF042F30)
 
-// Secondary – teal accent
-val Secondary80 = Color(0xFF96D3CF)
-val Secondary40 = Color(0xFF1E8B85)
-val Secondary20 = Color(0xFF0D4D4A)
+// Secondary — warm amber
+val Secondary = Color(0xFFD4920B)
+val SecondaryContainer = Color(0xFFFFF0D4)
+val OnSecondaryContainer = Color(0xFF4A3200)
 
-// Tertiary – warm amber
-val Tertiary80 = Color(0xFFEDC26A)
-val Tertiary40 = Color(0xFF8C6300)
-val Tertiary20 = Color(0xFF4D3400)
+// Tertiary — soft indigo for accents
+val Tertiary = Color(0xFF5C6BC0)
+val TertiaryContainer = Color(0xFFE0E3FF)
 
-// Neutral surfaces
-val Neutral10 = Color(0xFF1A1B2E)   // darkest – main background in dark theme
-val Neutral15 = Color(0xFF22243A)
-val Neutral20 = Color(0xFF2B2D43)
-val Neutral30 = Color(0xFF3D4060)
-val Neutral90 = Color(0xFFE3E3F4)
-val Neutral95 = Color(0xFFF2F2FF)
-val Neutral99 = Color(0xFFFEFBFF)
-
-// Neutral variant (more purple-tinted)
-val NeutralVariant30 = Color(0xFF444659)
-val NeutralVariant50 = Color(0xFF747689)
-val NeutralVariant80 = Color(0xFFC5C6D8)
-val NeutralVariant90 = Color(0xFFE2E2F3)
+// Neutral surfaces — warm grays
+val Background = Color(0xFFFAFAFA)
+val Surface = Color(0xFFFFFFFF)
+val SurfaceVariant = Color(0xFFF0F0F0)
+val OnSurface = Color(0xFF1A1C1E)
+val OnSurfaceVariant = Color(0xFF5F6368)
+val Outline = Color(0xFFDADCE0)
+val OutlineVariant = Color(0xFFE8EAED)
 
 // Semantic
-val ErrorColor = Color(0xFFB3261E)
-val ErrorContainerDark = Color(0xFF8C1D18)
-val OnErrorDark = Color(0xFFFFB4AB)
+val Error = Color(0xFFB3261E)
+val ErrorContainer = Color(0xFFFCE4EC)
+val OnError = Color(0xFFFFFFFF)
 
-// Listening indicator – live red pulse
-val ListeningRed = Color(0xFFFF4444)
-val ListeningRedContainer = Color(0xFF4D0000)
+// Listening state
+val ListeningRed = Color(0xFFEA4335)
+val ListeningRedSoft = Color(0xFFFDE7E7)
 
-// Translation display surface gradient endpoints
-val DisplayGradientStart = Color(0xFF1E2140)
-val DisplayGradientEnd = Color(0xFF0D0F1E)
+// Card surfaces
+val CardSurface = Color(0xFFFFFFFF)
+val CardBorder = Color(0xFFE8EAED)
+val CardHighlightBorder = Color(0xFF0D7377)

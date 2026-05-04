@@ -85,7 +85,6 @@ fun ModelDownloadScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    android.util.Log.e("DOWNLOAD_DEBUG", "ModelDownloadScreen COMPOSED")
     val manager = remember { ModelManager(context) }
     val scope = rememberCoroutineScope()
 
@@ -113,15 +112,11 @@ fun ModelDownloadScreen(
 
     fun startDownload(lang: Language) {
         val key = lang.bcp47
-        android.util.Log.w("ModelDownloadUI", "startDownload tapped: ${lang.displayName} ($key)")
-        if (downloadJobs[key]?.isActive == true) {
-            android.util.Log.w("ModelDownloadUI", "Already downloading $key, skipping")
-            return
-        }
+        if (downloadJobs[key]?.isActive == true) return
         val job = scope.launch {
             manager.downloadModel(lang)
                 .catch { e ->
-                    android.util.Log.e("ModelDownloadUI", "Download error for $key", e)
+                    android.util.Log.e("ModelManager", "Download error for $key", e)
                     if (e !is kotlinx.coroutines.CancellationException) {
                         downloadStates[key] = ModelDownloadState(
                             languageCode = key,
@@ -326,7 +321,6 @@ fun ModelDownloadScreen(
                         isDownloaded = false,
                         isDownloading = isDownloading,
                         onTap = {
-                            android.util.Log.e("DOWNLOAD_DEBUG", "TAP on ${lang.displayName}, isDownloading=$isDownloading")
                             if (isDownloading) cancelDownload(lang)
                             else startDownload(lang)
                         },
@@ -628,7 +622,7 @@ private fun formatBytes(bytes: Long): String = when {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun ModelDownloadScreenPreview() {
-    GemmaTranslatorTheme(darkTheme = true) {
+    GemmaTranslatorTheme {
         ModelDownloadScreen(onNavigateBack = {})
     }
 }

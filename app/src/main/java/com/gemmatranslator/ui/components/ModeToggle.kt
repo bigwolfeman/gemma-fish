@@ -2,7 +2,6 @@ package com.gemmatranslator.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,24 +41,17 @@ fun ModeToggle(
     onModeChange: (TranslationMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val trackColor by animateColorAsState(
-        targetValue = MaterialTheme.colorScheme.surfaceVariant,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "trackColor",
-    )
-
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp),
-        shape = RoundedCornerShape(26.dp),
-        color = trackColor,
-        tonalElevation = 2.dp,
+            .height(44.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(4.dp),
+                .padding(3.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             ModeTab(
@@ -69,6 +60,7 @@ fun ModeToggle(
                     Icon(
                         imageVector = Icons.Filled.Headphones,
                         contentDescription = "Earbud mode",
+                        modifier = Modifier.padding(end = 4.dp),
                     )
                 },
                 selected = mode == TranslationMode.EARBUD,
@@ -81,6 +73,7 @@ fun ModeToggle(
                     Icon(
                         imageVector = Icons.Filled.VolumeUp,
                         contentDescription = "Speaker mode",
+                        modifier = Modifier.padding(end = 4.dp),
                     )
                 },
                 selected = mode == TranslationMode.SPEAKER,
@@ -99,30 +92,24 @@ private fun ModeTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val selectedColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer
+    val bgColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.surface
         else MaterialTheme.colorScheme.surfaceVariant,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "tabColor",
+        label = "tabBg",
     )
     val contentColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+        targetValue = if (selected) MaterialTheme.colorScheme.primary
         else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "contentColor",
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.95f,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "tabScale",
+        label = "tabContent",
     )
 
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(22.dp))
-            .background(selectedColor)
+            .clip(RoundedCornerShape(10.dp))
+            .background(bgColor)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(),
@@ -132,7 +119,7 @@ private fun ModeTab(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 icon()
@@ -147,26 +134,13 @@ private fun ModeTab(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF1A1B2E)
+@Preview(showBackground = true)
 @Composable
-private fun ModeToggleEarbudPreview() {
-    com.gemmatranslator.ui.theme.GemmaTranslatorTheme(darkTheme = true) {
+private fun ModeTogglePreview() {
+    com.gemmatranslator.ui.theme.GemmaTranslatorTheme {
         Box(modifier = Modifier.padding(16.dp)) {
             ModeToggle(
                 mode = TranslationMode.EARBUD,
-                onModeChange = {},
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF1A1B2E)
-@Composable
-private fun ModeToggleSpeakerPreview() {
-    com.gemmatranslator.ui.theme.GemmaTranslatorTheme(darkTheme = true) {
-        Box(modifier = Modifier.padding(16.dp)) {
-            ModeToggle(
-                mode = TranslationMode.SPEAKER,
                 onModeChange = {},
             )
         }
