@@ -48,9 +48,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.gemmatranslator.model.Language
 
 @Composable
@@ -127,20 +129,29 @@ fun LanguageSelector(
             }
 
             if (expanded) {
-                Popup(
+                Dialog(
                     onDismissRequest = { expanded = false },
-                    properties = PopupProperties(focusable = true),
+                    properties = DialogProperties(usePlatformDefaultWidth = false),
                 ) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(elevation = 8.dp, shape = RoundedCornerShape(12.dp))
-                            .zIndex(10f),
-                        shape = RoundedCornerShape(12.dp),
+                            .padding(horizontal = 24.dp)
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
+                            .imePadding(),
+                        shape = RoundedCornerShape(16.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         tonalElevation = 8.dp,
                     ) {
                         Column {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
+                            )
+
                             LanguageSearchField(
                                 query = searchQuery,
                                 onQueryChange = { searchQuery = it },
@@ -177,7 +188,7 @@ fun LanguageSelector(
                                 }
                             } else {
                                 LazyColumn(
-                                    modifier = Modifier.heightIn(max = 260.dp),
+                                    modifier = Modifier.heightIn(max = 400.dp),
                                 ) {
                                     items(filteredLanguages, key = { it.bcp47 }) { language ->
                                         LanguageOption(
