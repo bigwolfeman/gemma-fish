@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ripple
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -70,7 +71,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -79,6 +83,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.gemmatranslator.R
 import com.gemmatranslator.model.Language
 import com.gemmatranslator.model.TranslationEntry
 import com.gemmatranslator.model.TranslationMode
@@ -689,56 +694,65 @@ private fun ListenFab(
         label = "fabScale",
     )
 
-    Column(
+    Box(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        FloatingActionButton(
-            onClick = { if (isReady || isListening) onClick() },
-            modifier = Modifier
-                .size(64.dp)
-                .scale(fabScale),
-            shape = CircleShape,
-            containerColor = when {
-                isModelLoading || !isReady && !isListening -> MaterialTheme.colorScheme.surfaceVariant
-                isListening -> ListeningRed
-                else -> MaterialTheme.colorScheme.primary
-            },
-            contentColor = when {
-                isModelLoading || !isReady && !isListening -> MaterialTheme.colorScheme.onSurfaceVariant
-                else -> Color.White
-            },
-            elevation = FloatingActionButtonDefaults.elevation(
-                defaultElevation = if (isListening) 8.dp else 4.dp,
-            ),
-        ) {
-            AnimatedContent(
-                targetState = isListening,
-                transitionSpec = {
-                    (scaleIn(tween(200)) + fadeIn(tween(200))) togetherWith
-                            (scaleOut(tween(150)) + fadeOut(tween(150)))
-                },
-                label = "fabIcon",
-            ) { listening ->
+        if (!isListening) {
+            Box(
+                modifier = Modifier
+                    .size(140.dp)
+                    .scale(fabScale)
+                    .clickable(
+                        enabled = isReady,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClick,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(90.dp)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = CircleShape,
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        ),
+                )
+                androidx.compose.foundation.Image(
+                    painter = painterResource(R.drawable.tap_to_speak),
+                    contentDescription = "Tap to speak",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                    alpha = if (isReady) 1f else 0.5f,
+                )
+            }
+        } else {
+            FloatingActionButton(
+                onClick = onClick,
+                modifier = Modifier
+                    .size(80.dp)
+                    .scale(fabScale)
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = CircleShape,
+                        ambientColor = ListeningRed.copy(alpha = 0.4f),
+                        spotColor = ListeningRed.copy(alpha = 0.5f),
+                    ),
+                shape = CircleShape,
+                containerColor = ListeningRed,
+                contentColor = Color.White,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp),
+            ) {
                 Icon(
-                    imageVector = if (listening) Icons.Filled.MicOff else Icons.Filled.Mic,
-                    contentDescription = if (listening) "Stop listening" else "Start listening",
-                    modifier = Modifier.size(28.dp),
+                    imageVector = Icons.Filled.MicOff,
+                    contentDescription = "Stop listening",
+                    modifier = Modifier.size(32.dp),
                 )
             }
         }
-
-        Text(
-            text = when {
-                isModelLoading -> "Loading model..."
-                !isReady -> "Initializing..."
-                isListening -> "Tap to stop"
-                else -> "Tap to speak"
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
