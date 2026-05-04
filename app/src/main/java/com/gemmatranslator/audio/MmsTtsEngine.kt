@@ -183,28 +183,22 @@ class MmsTtsEngine(private val context: Context) {
             return ISO639_1_TO_MMS[lang]
         }
 
+        // Verified against willwade/mms-tts-multilingual-models-onnx languages-supported.json
         private val ISO639_1_TO_MMS = mapOf(
-            // Available in willwade/mms-tts-multilingual-models-onnx (verified)
             "ar" to "ara", "bn" to "ben", "en" to "eng", "fr" to "fra",
             "de" to "deu", "hi" to "hin", "id" to "ind", "pt" to "por",
             "ru" to "rus", "es" to "spa", "sw" to "swh", "th" to "tha",
             "tr" to "tur", "vi" to "vie", "yo" to "yor", "ha" to "hau",
-            // Mappings for languages that may be downloaded on-demand
-            "zh" to "cmn", "ja" to "jpn", "ko" to "kor", "cs" to "ces",
-            "da" to "dan", "nl" to "nld", "fi" to "fin", "el" to "ell",
-            "he" to "heb", "hu" to "hun", "it" to "ita", "ms" to "msa",
-            "no" to "nob", "fa" to "pes", "pl" to "pol", "ro" to "ron",
-            "sv" to "swe", "uk" to "ukr",
-            "am" to "amh", "hy" to "hye", "az" to "aze", "bg" to "bul",
-            "my" to "mya", "ca" to "cat", "hr" to "hrv", "et" to "est",
-            "fil" to "fil", "ka" to "kat", "gu" to "guj", "ig" to "ibo",
-            "is" to "isl", "kn" to "kan", "kk" to "kaz", "km" to "khm",
-            "lo" to "lao", "lv" to "lvs", "lt" to "lit", "mk" to "mkd",
-            "ml" to "mal", "mr" to "mar", "mn" to "khk", "ne" to "npi",
-            "ps" to "pbt", "pa" to "pan", "sr" to "srp", "si" to "sin",
-            "sk" to "slk", "sl" to "slv", "so" to "som", "ta" to "tam",
-            "te" to "tel", "ur" to "urd", "uz" to "uzn", "cy" to "cym",
-            "xh" to "xho", "zu" to "zul",
+            "nl" to "nld", "fi" to "fin", "el" to "ell", "he" to "heb",
+            "hu" to "hun", "pl" to "pol", "ro" to "ron", "sv" to "swe",
+            "uk" to "ukr", "bg" to "bul", "my" to "mya", "ca" to "cat",
+            "fa" to "fas", "gu" to "guj", "is" to "isl", "kn" to "kan",
+            "kk" to "kaz", "km" to "khm", "lv" to "lav", "ml" to "mal",
+            "mr" to "mar", "mn" to "mon", "pa" to "pan", "so" to "som",
+            "ta" to "tam", "te" to "tel", "cy" to "cym", "ms" to "zlm",
+            "hy" to "hyw", "az" to "azj-script_latin",
+            "fil" to "tgl", "uz" to "uzb-script_latin",
+            "ur" to "urd-script_arabic",
         )
     }
 }

@@ -26,8 +26,13 @@ private const val MODEL_SIZE_BYTES = 114_294_784L
 private const val HF_BASE_URL =
     "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main"
 
-// Codes confirmed NOT available in any ONNX repo
-private val UNAVAILABLE_CODES = setOf("amh", "guk", "sgw", "tir", "zul", "xho", "cmn", "jpn")
+// Languages with no MMS ONNX model available (verified against willwade repo JSON)
+private val UNAVAILABLE_BCP47 = setOf(
+    "am", "zu", "xh", "zh", "ja", "ko",  // no ONNX exists
+    "cs", "da", "et", "hr", "ig", "it",   // not in repo
+    "ka", "lt", "mk", "ne", "no", "ps",   // not in repo
+    "si", "sk", "sl", "sr", "lo",         // not in repo
+)
 
 // ---------------------------------------------------------------------------
 // Download state
@@ -66,8 +71,9 @@ class ModelManager(private val context: Context) {
         Language.entries.filter { isModelDownloaded(it) }
 
     fun isDownloadable(language: Language): Boolean {
-        val iso3 = MmsTtsEngine.bcp47ToMmsCode(language.bcp47) ?: return false
-        return iso3 !in UNAVAILABLE_CODES
+        val lang = language.bcp47.substringBefore('-').lowercase()
+        if (lang in UNAVAILABLE_BCP47) return false
+        return MmsTtsEngine.bcp47ToMmsCode(language.bcp47) != null
     }
 
     fun getDownloadableLanguages(): List<Language> =
@@ -94,8 +100,10 @@ class ModelManager(private val context: Context) {
      * If the model is already downloaded this emits a single complete state immediately.
      */
     fun downloadModel(language: Language): Flow<ModelDownloadState> = flow {
+        Log.w(TAG, "=== downloadModel START for ${language.displayName} (${language.bcp47}) ===")
         val iso3 = MmsTtsEngine.bcp47ToMmsCode(language.bcp47)
         if (iso3 == null) {
+            Log.e(TAG, "No MMS code for ${language.bcp47}")
             emit(
                 ModelDownloadState(
                     languageCode = language.bcp47,
@@ -124,7 +132,9 @@ class ModelManager(private val context: Context) {
         }
 
         val destDir = File(modelsDir, iso3)
+        Log.w(TAG, "Downloading to: ${destDir.absolutePath}, exists=${destDir.exists()}")
         destDir.mkdirs()
+        Log.w(TAG, "Dir created: ${destDir.exists()}, canWrite=${destDir.canWrite()}")
 
         // Files to download in order: model.onnx first (large), then tokens.txt (small)
         val files = listOf("model.onnx", "tokens.txt")
@@ -288,6 +298,7 @@ class ModelManager(private val context: Context) {
     }
 
     private fun openWithRedirects(url: String, maxRedirects: Int = 5): HttpURLConnection {
+        Log.w(TAG, "openWithRedirects: $url")
         var currentUrl = url
         repeat(maxRedirects) {
             val conn = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
