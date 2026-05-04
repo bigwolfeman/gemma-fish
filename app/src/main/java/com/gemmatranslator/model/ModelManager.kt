@@ -26,6 +26,9 @@ private const val MODEL_SIZE_BYTES = 114_294_784L
 private const val HF_BASE_URL =
     "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main"
 
+// Codes confirmed NOT available in any ONNX repo
+private val UNAVAILABLE_CODES = setOf("amh", "guk", "sgw", "tir", "zul", "xho", "cmn", "jpn")
+
 // ---------------------------------------------------------------------------
 // Download state
 // ---------------------------------------------------------------------------
@@ -61,6 +64,14 @@ class ModelManager(private val context: Context) {
 
     fun getDownloadedLanguages(): List<Language> =
         Language.entries.filter { isModelDownloaded(it) }
+
+    fun isDownloadable(language: Language): Boolean {
+        val iso3 = MmsTtsEngine.bcp47ToMmsCode(language.bcp47) ?: return false
+        return iso3 !in UNAVAILABLE_CODES
+    }
+
+    fun getDownloadableLanguages(): List<Language> =
+        Language.entries.filter { !isModelDownloaded(it) && isDownloadable(it) }
 
     /** Estimated size per model in bytes (~109 MB). */
     fun getModelSizeBytes(): Long = MODEL_SIZE_BYTES
@@ -236,6 +247,7 @@ class ModelManager(private val context: Context) {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 30_000
+            instanceFollowRedirects = true
             setRequestProperty("User-Agent", "GemmaTranslator/1.0")
             connect()
         }

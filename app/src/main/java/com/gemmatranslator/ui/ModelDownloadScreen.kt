@@ -162,7 +162,9 @@ fun ModelDownloadScreen(
     }
 
     val downloadedLanguages = filtered.filter { isDownloaded(it) || downloadStates[it.bcp47]?.isComplete == true }
-    val availableLanguages = filtered.filter { !isDownloaded(it) && downloadStates[it.bcp47]?.isComplete != true }
+    val availableLanguages = filtered.filter {
+        !isDownloaded(it) && downloadStates[it.bcp47]?.isComplete != true && manager.isDownloadable(it)
+    }
 
     // ── Storage summary ───────────────────────────────────────────────────────
 
