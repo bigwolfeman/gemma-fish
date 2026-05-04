@@ -244,13 +244,7 @@ class ModelManager(private val context: Context) {
         grandTotal: Long,
         onProgress: suspend (Long, Long) -> Unit,
     ) {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 30_000
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "GemmaTranslator/1.0")
-            connect()
-        }
+        val connection = openWithRedirects(url)
 
         val responseCode = connection.responseCode
         if (responseCode != HttpURLConnection.HTTP_OK) {
@@ -291,5 +285,29 @@ class ModelManager(private val context: Context) {
         }
 
         connection.disconnect()
+    }
+
+    private fun openWithRedirects(url: String, maxRedirects: Int = 5): HttpURLConnection {
+        var currentUrl = url
+        repeat(maxRedirects) {
+            val conn = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15_000
+                readTimeout = 60_000
+                instanceFollowRedirects = false
+                setRequestProperty("User-Agent", "GemmaTranslator/1.0")
+            }
+            conn.connect()
+            val code = conn.responseCode
+            if (code in 301..308) {
+                val location = conn.getHeaderField("Location")
+                    ?: throw IOException("Redirect with no Location header")
+                conn.disconnect()
+                currentUrl = location
+                Log.d(TAG, "Following redirect to ${location.take(80)}...")
+            } else {
+                return conn
+            }
+        }
+        throw IOException("Too many redirects for $url")
     }
 }
