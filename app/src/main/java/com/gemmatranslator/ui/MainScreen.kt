@@ -322,7 +322,7 @@ private fun IdleBranding(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = "Tap the mic to begin",
+            text = "Tap the fish to begin",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
             textAlign = TextAlign.Center,
@@ -698,58 +698,48 @@ private fun ListenFab(
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        if (!isListening) {
+        val imageRes = if (isListening) R.drawable.speaking else R.drawable.tap_to_speak
+        val description = if (isListening) "Tap to stop" else "Tap to speak"
+        val shadowColor = if (isListening) ListeningRed else MaterialTheme.colorScheme.primary
+
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .scale(fabScale)
+                .clickable(
+                    enabled = isReady || isListening,
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
             Box(
                 modifier = Modifier
-                    .size(140.dp)
-                    .scale(fabScale)
-                    .clickable(
-                        enabled = isReady,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onClick,
+                    .size(90.dp)
+                    .shadow(
+                        elevation = 16.dp,
+                        shape = CircleShape,
+                        ambientColor = shadowColor.copy(alpha = 0.25f),
+                        spotColor = shadowColor.copy(alpha = 0.35f),
                     ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(90.dp)
-                        .shadow(
-                            elevation = 16.dp,
-                            shape = CircleShape,
-                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        ),
-                )
+            )
+            AnimatedContent(
+                targetState = isListening,
+                transitionSpec = {
+                    (scaleIn(tween(200)) + fadeIn(tween(200))) togetherWith
+                            (scaleOut(tween(150)) + fadeOut(tween(150)))
+                },
+                label = "fishState",
+            ) { listening ->
                 androidx.compose.foundation.Image(
-                    painter = painterResource(R.drawable.tap_to_speak),
-                    contentDescription = "Tap to speak",
+                    painter = painterResource(
+                        if (listening) R.drawable.speaking else R.drawable.tap_to_speak,
+                    ),
+                    contentDescription = description,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
-                    alpha = if (isReady) 1f else 0.5f,
-                )
-            }
-        } else {
-            FloatingActionButton(
-                onClick = onClick,
-                modifier = Modifier
-                    .size(80.dp)
-                    .scale(fabScale)
-                    .shadow(
-                        elevation = 12.dp,
-                        shape = CircleShape,
-                        ambientColor = ListeningRed.copy(alpha = 0.4f),
-                        spotColor = ListeningRed.copy(alpha = 0.5f),
-                    ),
-                shape = CircleShape,
-                containerColor = ListeningRed,
-                contentColor = Color.White,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.MicOff,
-                    contentDescription = "Stop listening",
-                    modifier = Modifier.size(32.dp),
+                    alpha = if (isReady || listening) 1f else 0.5f,
                 )
             }
         }
