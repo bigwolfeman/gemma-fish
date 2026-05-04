@@ -698,14 +698,16 @@ private fun ListenFab(
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        val imageRes = if (isListening) R.drawable.speaking else R.drawable.tap_to_speak
-        val description = if (isListening) "Tap to stop" else "Tap to speak"
-        val shadowColor = if (isListening) ListeningRed else MaterialTheme.colorScheme.primary
-
         Box(
             modifier = Modifier
-                .size(140.dp)
+                .size(150.dp)
                 .scale(fabScale)
+                .shadow(
+                    elevation = 20.dp,
+                    shape = CircleShape,
+                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                )
                 .clickable(
                     enabled = isReady || isListening,
                     interactionSource = remember { MutableInteractionSource() },
@@ -714,21 +716,11 @@ private fun ListenFab(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(90.dp)
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = CircleShape,
-                        ambientColor = shadowColor.copy(alpha = 0.25f),
-                        spotColor = shadowColor.copy(alpha = 0.35f),
-                    ),
-            )
             AnimatedContent(
                 targetState = isListening,
                 transitionSpec = {
-                    (scaleIn(tween(200)) + fadeIn(tween(200))) togetherWith
-                            (scaleOut(tween(150)) + fadeOut(tween(150)))
+                    (scaleIn(tween(250)) + fadeIn(tween(250))) togetherWith
+                            (scaleOut(tween(200)) + fadeOut(tween(200)))
                 },
                 label = "fishState",
             ) { listening ->
@@ -736,7 +728,7 @@ private fun ListenFab(
                     painter = painterResource(
                         if (listening) R.drawable.speaking else R.drawable.tap_to_speak,
                     ),
-                    contentDescription = description,
+                    contentDescription = if (listening) "Tap to stop" else "Tap to speak",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
                     alpha = if (isReady || listening) 1f else 0.5f,
