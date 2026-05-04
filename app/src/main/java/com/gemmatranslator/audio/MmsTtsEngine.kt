@@ -56,24 +56,25 @@ class MmsTtsEngine(private val context: Context) {
 
             val tts = currentTts ?: return@withContext false
 
-            val track = getOrCreateAudioTrack(tts.sampleRate(), pan)
-            track.play()
-
             try {
-                tts.generateWithConfigAndCallback(
+                val audio = tts.generateWithConfig(
                     text = text,
                     config = GenerationConfig(sid = 0, speed = speechRate),
-                    callback = { samples ->
-                        track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-                        1
-                    }
                 )
+                val samples = audio.samples
+                if (samples.isEmpty()) {
+                    Log.w(TAG, "TTS generated empty audio for $iso3")
+                    return@withContext false
+                }
+
+                val track = getOrCreateAudioTrack(tts.sampleRate(), pan)
+                track.play()
+                track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
                 track.stop()
                 Log.d(TAG, "Spoke in $iso3: \"${text.take(50)}...\"")
                 true
             } catch (e: Exception) {
                 Log.e(TAG, "TTS generation failed for $iso3", e)
-                track.stop()
                 false
             }
         }

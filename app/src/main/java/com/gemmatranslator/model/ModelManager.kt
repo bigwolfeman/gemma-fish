@@ -266,30 +266,27 @@ class ModelManager(private val context: Context) {
         val fileTotal = if (contentLength > 0) contentLength else (MODEL_SIZE_BYTES - alreadyDownloaded)
         val total = (alreadyDownloaded + fileTotal).coerceAtLeast(grandTotal)
 
-        withContext(Dispatchers.IO) {
-            connection.inputStream.use { input ->
-                dest.outputStream().use { output ->
-                    val buffer = ByteArray(128 * 1024)  // 128 KB chunks
-                    var fileDownloaded = 0L
-                    var lastEmittedAt = 0L
+        connection.inputStream.use { input ->
+            dest.outputStream().use { output ->
+                val buffer = ByteArray(128 * 1024)
+                var fileDownloaded = 0L
+                var lastEmittedAt = 0L
 
-                    while (coroutineContext.isActive) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
-                        fileDownloaded += read
+                while (coroutineContext.isActive) {
+                    val read = input.read(buffer)
+                    if (read == -1) break
+                    output.write(buffer, 0, read)
+                    fileDownloaded += read
 
-                        val totalDownloaded = alreadyDownloaded + fileDownloaded
-                        // Throttle progress emissions to every 512 KB
-                        if (totalDownloaded - lastEmittedAt >= 512 * 1024 || fileDownloaded == fileTotal) {
-                            lastEmittedAt = totalDownloaded
-                            onProgress(totalDownloaded, total)
-                        }
+                    val totalDownloaded = alreadyDownloaded + fileDownloaded
+                    if (totalDownloaded - lastEmittedAt >= 512 * 1024 || fileDownloaded == fileTotal) {
+                        lastEmittedAt = totalDownloaded
+                        onProgress(totalDownloaded, total)
                     }
+                }
 
-                    if (!coroutineContext.isActive) {
-                        throw CancellationException("Download cancelled")
-                    }
+                if (!coroutineContext.isActive) {
+                    throw CancellationException("Download cancelled")
                 }
             }
         }
@@ -301,7 +298,8 @@ class ModelManager(private val context: Context) {
         Log.w(TAG, "openWithRedirects: $url")
         var currentUrl = url
         repeat(maxRedirects) {
-            val conn = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+            val baseUrl = URL(currentUrl)
+            val conn = (baseUrl.openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000
                 readTimeout = 60_000
                 instanceFollowRedirects = false
@@ -313,8 +311,9 @@ class ModelManager(private val context: Context) {
                 val location = conn.getHeaderField("Location")
                     ?: throw IOException("Redirect with no Location header")
                 conn.disconnect()
-                currentUrl = location
-                Log.d(TAG, "Following redirect to ${location.take(80)}...")
+                // Resolve relative redirects against the current URL
+                currentUrl = URL(baseUrl, location).toString()
+                Log.d(TAG, "Following redirect to ${currentUrl.take(120)}...")
             } else {
                 return conn
             }
