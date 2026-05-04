@@ -700,14 +700,8 @@ private fun ListenFab(
     ) {
         Box(
             modifier = Modifier
-                .size(150.dp)
+                .size(200.dp)
                 .scale(fabScale)
-                .shadow(
-                    elevation = 20.dp,
-                    shape = CircleShape,
-                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                )
                 .clickable(
                     enabled = isReady || isListening,
                     interactionSource = remember { MutableInteractionSource() },
