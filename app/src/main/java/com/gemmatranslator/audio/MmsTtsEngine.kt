@@ -28,7 +28,7 @@ class MmsTtsEngine(private val context: Context) {
     @Volatile private var speechRate: Float = 1.0f
 
     private val modelsDir: File
-        get() = File(context.getExternalFilesDir(null), "mms-tts")
+        get() = File(context.filesDir, "mms-tts")
 
     fun isLanguageAvailable(bcp47: String): Boolean {
         val iso3 = bcp47ToMmsCode(bcp47) ?: return false

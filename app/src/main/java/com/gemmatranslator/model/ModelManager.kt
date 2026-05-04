@@ -49,7 +49,7 @@ data class ModelDownloadState(
 class ModelManager(private val context: Context) {
 
     private val modelsDir: File
-        get() = File(context.getExternalFilesDir(null), "mms-tts")
+        get() = File(context.filesDir, "mms-tts")
 
     /** Active download jobs keyed by iso3 code so we can cancel them. */
     private val activeDownloads = ConcurrentHashMap<String, Job>()
